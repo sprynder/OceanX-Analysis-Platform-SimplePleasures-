@@ -66,3 +66,94 @@ func (r *VideoRepository) UpdateStatus(
 	)
 	return err
 }
+
+func (r *VideoRepository) GetByID(
+	ctx context.Context,
+	id string,
+) (*models.Video, error) {
+
+	var v models.Video
+
+	query := `
+		SELECT id, filename, path, status,
+		       frames_processed, rois_detected,
+		       error, created_at
+		FROM videos
+		WHERE id = $1
+	`
+
+	err := r.DB.QueryRowContext(ctx, query, id).Scan(
+		&v.ID,
+		&v.Filename,
+		&v.Path,
+		&v.Status,
+		&v.FramesProcessed,
+		&v.RoisDetected,
+		&v.Error,
+		&v.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v, nil
+}
+
+func (r *VideoRepository) SaveFrames(
+	ctx context.Context,
+	videoID string,
+	frames []*models.Frame,
+) error {
+	query := `
+		INSERT INTO frames (id, video_id, frame_idx)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (video_id, frame_idx) DO NOTHING
+	`
+
+	for _, frame := range frames {
+		_, err := r.DB.ExecContext(
+			ctx,
+			query,
+			frame.ID,
+			frame.VideoID,
+			frame.FrameIdx,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *VideoRepository) SaveROIs(
+	ctx context.Context,
+	videoID string,
+	rois []*models.Roi,
+) error {
+	// First get the frame IDs for each frame_idx
+	query := `
+		INSERT INTO rois (id, frame_id, frame_idx, video_id, x1, y1, x2, y2)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`
+
+	for _, roi := range rois {
+		_, err := r.DB.ExecContext(
+			ctx,
+			query,
+			roi.ID,
+			roi.FrameID,
+			roi.FrameIdx,
+			videoID,
+			roi.X1,
+			roi.Y1,
+			roi.X2,
+			roi.Y2,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

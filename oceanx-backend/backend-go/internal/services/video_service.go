@@ -92,6 +92,78 @@ func (s *VideoService) SaveUploadedVideo(
 	video.Path = videoPath
 	return video, nil
 }
+func (s *VideoService) GetVideo(
+	ctx context.Context,
+	id string,
+) (*models.Video, error) {
+	return s.Repo.GetByID(ctx, id)
+}
+
+func (s *VideoService) SaveProcessingResults(
+	ctx context.Context,
+	videoID string,
+	response *models.ProcessVideoResponse,
+) error {
+	// Build frame and ROI data structures
+	frames := make([]*models.Frame, 0)
+	rois := make([]*models.Roi, 0)
+
+	for _, frameData := range response.Frames {
+		frames = append(frames, &models.Frame{
+			ID:       frameData.ID,
+			VideoID:  frameData.VideoID,
+			FrameIdx: frameData.FrameIndex,
+		})
+
+		for _, roiData := range frameData.ROIs {
+			rois = append(rois, &models.Roi{
+				ID:       roiData.ID,
+				FrameID:  frameData.ID,
+				FrameIdx: frameData.FrameIndex,
+				VideoID:  frameData.VideoID,
+				X1:       roiData.X1,
+				Y1:       roiData.Y1,
+				X2:       roiData.X2,
+				Y2:       roiData.Y2,
+			})
+		}
+	}
+
+	// Save frames
+	if err := s.Repo.SaveFrames(ctx, videoID, frames); err != nil {
+		return fmt.Errorf("failed to save frames: %w", err)
+	}
+
+	// Save ROIs
+	if err := s.Repo.SaveROIs(ctx, videoID, rois); err != nil {
+		return fmt.Errorf("failed to save rois: %w", err)
+	}
+
+	// Update video with processing stats
+	totalROIs := len(rois)
+	if err := s.MarkCompleted(ctx, videoID, len(frames), totalROIs); err != nil {
+		return fmt.Errorf("failed to mark video completed: %w", err)
+	}
+
+	return nil
+}
+
+func (s *VideoService) MarkCompleted(
+	ctx context.Context,
+	id string,
+	frames int,
+	rois int,
+) error {
+	_, err := s.Repo.DB.ExecContext(ctx, `
+		UPDATE videos
+		SET status='completed',
+		    frames_processed=$1,
+		    rois_detected=$2
+		WHERE id=$3
+	`, frames, rois, id)
+
+	return err
+}
 
 func (s *VideoService) TriggerProcessingAsync(video *models.Video) {
 	go func() {

@@ -38,6 +38,7 @@ services:
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
+      - GATEWAY_API=http://backend-go:8080
     depends_on:
       - qdrant
 

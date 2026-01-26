@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"oceanx/backend-go/internal/clients"
+	"oceanx/backend-go/internal/db"
 	"oceanx/backend-go/internal/handlers"
 	"oceanx/backend-go/internal/repositories"
 	"oceanx/backend-go/internal/router"
@@ -15,15 +16,22 @@ import (
 )
 
 func main() {
-	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+	databaseURL := os.Getenv("DATABASE_URL")
+
+	// Run migrations first
+	if err := db.RunMigrations(databaseURL); err != nil {
+		log.Fatal(err)
+	}
+
+	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	videoRepo := repositories.NewVideoRepository(db)
 	mlClient := clients.NewMLClient(
-	os.Getenv("ML_SERVICE_URL"), // e.g. http://backend-ml:8000
-)
+		os.Getenv("ML_SERVICE_URL"), // e.g. http://backend-ml:8000
+	)
 
 	videoService := services.NewVideoService(
 		videoRepo,
