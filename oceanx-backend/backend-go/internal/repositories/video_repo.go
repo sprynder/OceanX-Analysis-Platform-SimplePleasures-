@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/google/uuid"
 	"oceanx/backend-go/internal/models"
+
+	"github.com/google/uuid"
 )
 
 type VideoRepository struct {
@@ -45,9 +46,23 @@ func (r *VideoRepository) Create(
 
 	return &models.Video{
 		ID:        id,
-		Filename: filename,
+		Filename:  filename,
 		Path:      path,
 		Status:    "uploaded",
 		CreatedAt: now,
 	}, nil
+}
+
+func (r *VideoRepository) UpdateStatus(
+	ctx context.Context,
+	videoID string,
+	status string,
+) error {
+	_, err := r.DB.ExecContext(
+		ctx,
+		`UPDATE videos SET status=$1 WHERE id=$2`,
+		status,
+		videoID,
+	)
+	return err
 }

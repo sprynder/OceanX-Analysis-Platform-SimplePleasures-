@@ -8,21 +8,25 @@ import (
 	"os"
 	"path/filepath"
 
+	"oceanx/backend-go/internal/clients"
 	"oceanx/backend-go/internal/models"
 	"oceanx/backend-go/internal/repositories"
 )
 
 type VideoService struct {
 	Repo       *repositories.VideoRepository
+	MLClient   *clients.MLClient
 	StorageDir string
 }
 
 func NewVideoService(
 	repo *repositories.VideoRepository,
+	mlClient *clients.MLClient,
 	storageDir string,
 ) *VideoService {
 	return &VideoService{
 		Repo:       repo,
+		MLClient:   mlClient,
 		StorageDir: storageDir,
 	}
 }
@@ -87,4 +91,27 @@ func (s *VideoService) SaveUploadedVideo(
 
 	video.Path = videoPath
 	return video, nil
+}
+
+func (s *VideoService) TriggerProcessingAsync(video *models.Video) {
+	go func() {
+		ctx := context.Background()
+
+		// Mark as processing
+		_ = s.Repo.UpdateStatus(ctx, video.ID, "processing")
+
+		err := s.MLClient.ProcessVideo(
+			ctx,
+			video.ID,
+			video.Path,
+		)
+
+		if err != nil {
+			_ = s.Repo.UpdateStatus(ctx, video.ID, "failed")
+			return
+		}
+
+		// ML pipeline will populate DB/Qdrant later
+		_ = s.Repo.UpdateStatus(ctx, video.ID, "completed")
+	}()
 }

@@ -8,7 +8,9 @@ services:
     depends_on: [postgres, backend-ml]
     environment:
       - DATABASE_URL=postgres://oceanx:oceanx@postgres:5432/oceanx?sslmode=disable
-      - FASTAPI_BASE_URL=http://backend-ml:8000
+      - ML_SERVICE_URL=http://backend-ml:8000
+    volumes:
+      - videos:/data/videos
   postgres:
     image: postgres
     restart: always
@@ -31,8 +33,8 @@ services:
       context: ../backend-ml
     ports:
       - "8000:8000"
-    # volumes:
-    #   - ../models:/app/models
+    volumes:
+      - videos:/data/videos
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
@@ -41,3 +43,4 @@ services:
 
 volumes:
   qdrant_data:
+  videos:

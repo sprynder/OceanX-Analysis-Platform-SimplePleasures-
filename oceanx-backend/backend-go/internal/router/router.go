@@ -1,8 +1,9 @@
 package router
 
 import (
-	"github.com/gin-gonic/gin"
 	"oceanx/backend-go/internal/handlers"
+
+	"github.com/gin-gonic/gin"
 )
 
 func SetupRouter(videoHandler *handlers.VideoHandler) *gin.Engine {
@@ -11,5 +12,3 @@ func SetupRouter(videoHandler *handlers.VideoHandler) *gin.Engine {
 
 	return r
 }
-
-

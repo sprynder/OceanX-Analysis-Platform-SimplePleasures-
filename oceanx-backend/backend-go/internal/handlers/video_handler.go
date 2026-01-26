@@ -3,8 +3,9 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"oceanx/backend-go/internal/services"
+
+	"github.com/gin-gonic/gin"
 )
 
 type VideoHandler struct {
@@ -36,7 +37,7 @@ func (h *VideoHandler) UploadVideo(c *gin.Context) {
 	}
 
 	// 🔥 async ML kick-off goes HERE later
-	// go h.Service.ProcessVideo(video)
+	h.Service.TriggerProcessingAsync(video)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"id":        video.ID,
