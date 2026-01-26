@@ -3,3 +3,7 @@
 /runs
 /images
 /models
+/oceanx-backend/backend-ml/models
+/oceanx-backend/backend-ml/__pycache__
+
+

@@ -1,0 +1,11 @@
+# backend-ml/requirements.txt
+fastapi
+uvicorn
+numpy
+pillow
+qdrant-client
+python-multipart
+opencv-python-headless
+ultralytics
+torchvision
+open-clip-torch
