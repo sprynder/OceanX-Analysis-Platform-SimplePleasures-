@@ -3,9 +3,9 @@ package repositories
 import (
 	"context"
 	"database/sql"
-	"time"
-
+	"fmt"
 	"oceanx/backend-go/internal/models"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -73,13 +73,13 @@ func (r *VideoRepository) GetByID(
 ) (*models.Video, error) {
 
 	var v models.Video
-
+	fmt.Println("Fetching video with ID:", id)
 	query := `
 		SELECT id, filename, path, status,
 		       frames_processed, rois_detected,
 		       error, created_at
 		FROM videos
-		WHERE id = $1
+		WHERE id = $1::uuid
 	`
 
 	err := r.DB.QueryRowContext(ctx, query, id).Scan(
@@ -93,6 +93,7 @@ func (r *VideoRepository) GetByID(
 		&v.CreatedAt,
 	)
 	if err != nil {
+		fmt.Println("Database error:", err)
 		return nil, err
 	}
 

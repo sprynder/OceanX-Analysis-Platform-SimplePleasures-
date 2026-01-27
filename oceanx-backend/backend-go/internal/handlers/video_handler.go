@@ -25,7 +25,8 @@ func (h *VideoHandler) GetVideo(c *gin.Context) {
 	)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "video not found",
+			"error":   "video not found",
+			"details": err.Error(),
 		})
 		return
 	}
