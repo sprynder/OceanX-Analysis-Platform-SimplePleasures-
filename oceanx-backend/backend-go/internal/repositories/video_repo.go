@@ -134,8 +134,8 @@ func (r *VideoRepository) SaveROIs(
 ) error {
 	// First get the frame IDs for each frame_idx
 	query := `
-		INSERT INTO rois (id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO rois (id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
 
 	for _, roi := range rois {
@@ -151,6 +151,7 @@ func (r *VideoRepository) SaveROIs(
 			roi.X2,
 			roi.Y2,
 			roi.RoiUrl,
+			-1, // Default cluster value for unclustered ROIs
 		)
 		if err != nil {
 			return err

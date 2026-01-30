@@ -211,3 +211,34 @@ func (s *VideoService) TriggerProcessingAsync(video *models.Video) {
 		_ = s.Repo.UpdateStatus(ctx, video.ID, "completed")
 	}()
 }
+
+// ROI Query Methods
+
+func (s *VideoService) GetROIsByVideo(
+	ctx context.Context,
+	videoID string,
+) ([]models.Roi, error) {
+	return s.Repo.GetROIsByVideo(ctx, videoID)
+}
+
+func (s *VideoService) GetROIsByVideoAndCluster(
+	ctx context.Context,
+	videoID string,
+	clusterID int,
+) ([]models.Roi, error) {
+	return s.Repo.GetROIsByVideoAndCluster(ctx, videoID, clusterID)
+}
+
+func (s *VideoService) GetROIByID(
+	ctx context.Context,
+	roiID string,
+) (*models.Roi, error) {
+	return s.Repo.GetROIByID(ctx, roiID)
+}
+
+func (s *VideoService) GetClustersByVideo(
+	ctx context.Context,
+	videoID string,
+) ([]repositories.ClusterInfo, error) {
+	return s.Repo.GetClustersByVideo(ctx, videoID)
+}

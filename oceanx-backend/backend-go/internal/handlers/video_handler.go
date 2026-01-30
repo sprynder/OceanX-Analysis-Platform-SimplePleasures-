@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 
 	"oceanx/backend-go/internal/models"
 	"oceanx/backend-go/internal/services"
@@ -133,5 +134,109 @@ func (h *VideoHandler) UploadVideo(c *gin.Context) {
 		"filename":  video.Filename,
 		"status":    video.Status,
 		"createdAt": video.CreatedAt,
+	})
+}
+
+// ListROIs retrieves ROIs for a video, optionally filtered by cluster
+func (h *VideoHandler) ListROIs(c *gin.Context) {
+	videoID := c.Param("id")
+	clusterParam := c.Query("cluster")
+
+	var rois []models.Roi
+	var err error
+
+	if clusterParam != "" {
+		// Filter by cluster
+		clusterID, err := strconv.Atoi(clusterParam)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid cluster parameter"})
+			return
+		}
+		rois, err = h.Service.GetROIsByVideoAndCluster(c.Request.Context(), videoID, clusterID)
+	} else {
+		// Get all ROIs for video
+		rois, err = h.Service.GetROIsByVideo(c.Request.Context(), videoID)
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if rois == nil {
+		rois = []models.Roi{} // Return empty array instead of null
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"video_id": videoID,
+		"count":    len(rois),
+		"rois":     rois,
+	})
+}
+
+// GetROI retrieves a single ROI by ID
+func (h *VideoHandler) GetROI(c *gin.Context) {
+	roiID := c.Param("roi_id")
+
+	roi, err := h.Service.GetROIByID(c.Request.Context(), roiID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if roi == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "ROI not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, roi)
+}
+
+// GetVideoClusterDashboard retrieves ROIs grouped by cluster
+type ClusterGroup struct {
+	ClusterID int          `json:"cluster_id"`
+	RoiCount  int          `json:"roi_count"`
+	ROIs      []models.Roi `json:"rois"`
+}
+
+type DashboardResponse struct {
+	VideoID  string         `json:"video_id"`
+	Clusters []ClusterGroup `json:"clusters"`
+}
+
+func (h *VideoHandler) GetVideoClusterDashboard(c *gin.Context) {
+	videoID := c.Param("id")
+
+	// Get all clusters for the video
+	clusters, err := h.Service.GetClustersByVideo(c.Request.Context(), videoID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Build response with ROIs grouped by cluster
+	clusterGroups := make([]ClusterGroup, 0)
+
+	for _, cluster := range clusters {
+		rois, err := h.Service.GetROIsByVideoAndCluster(c.Request.Context(), videoID, cluster.ClusterID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		if rois == nil {
+			rois = []models.Roi{}
+		}
+
+		clusterGroups = append(clusterGroups, ClusterGroup{
+			ClusterID: cluster.ClusterID,
+			RoiCount:  cluster.RoiCount,
+			ROIs:      rois,
+		})
+	}
+
+	c.JSON(http.StatusOK, DashboardResponse{
+		VideoID:  videoID,
+		Clusters: clusterGroups,
 	})
 }
