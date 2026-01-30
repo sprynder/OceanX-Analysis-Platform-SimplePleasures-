@@ -3,9 +3,9 @@ package repositories
 import (
 	"context"
 	"database/sql"
-	"time"
-
+	"fmt"
 	"oceanx/backend-go/internal/models"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -73,13 +73,13 @@ func (r *VideoRepository) GetByID(
 ) (*models.Video, error) {
 
 	var v models.Video
-
+	fmt.Println("Fetching video with ID:", id)
 	query := `
 		SELECT id, filename, path, status,
 		       frames_processed, rois_detected,
 		       error, created_at
 		FROM videos
-		WHERE id = $1
+		WHERE id = $1::uuid
 	`
 
 	err := r.DB.QueryRowContext(ctx, query, id).Scan(
@@ -93,6 +93,7 @@ func (r *VideoRepository) GetByID(
 		&v.CreatedAt,
 	)
 	if err != nil {
+		fmt.Println("Database error:", err)
 		return nil, err
 	}
 
@@ -133,8 +134,8 @@ func (r *VideoRepository) SaveROIs(
 ) error {
 	// First get the frame IDs for each frame_idx
 	query := `
-		INSERT INTO rois (id, frame_id, frame_idx, video_id, x1, y1, x2, y2)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO rois (id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
 
 	for _, roi := range rois {
@@ -149,6 +150,8 @@ func (r *VideoRepository) SaveROIs(
 			roi.Y1,
 			roi.X2,
 			roi.Y2,
+			roi.RoiUrl,
+			-1, // Default cluster value for unclustered ROIs
 		)
 		if err != nil {
 			return err

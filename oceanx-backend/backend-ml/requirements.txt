@@ -9,3 +9,5 @@ opencv-python-headless
 ultralytics
 torchvision
 open-clip-torch
+hdbscan
+scikit-learn

@@ -2,6 +2,15 @@
 version: "3.9"
 
 services:
+  nginx:
+      image: nginx
+      ports:
+        - "80:80"
+      volumes:
+        - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      depends_on:
+        - backend-go
+
   backend-go:
     build: ../backend-go
     ports: ["8080:8080"]
@@ -11,6 +20,7 @@ services:
       - ML_SERVICE_URL=http://backend-ml:8000
     volumes:
       - videos:/data/videos
+
   postgres:
     image: postgres
     restart: always
@@ -20,6 +30,9 @@ services:
       POSTGRES_DB: oceanx
       POSTGRES_USER: oceanx
       POSTGRES_PASSWORD: oceanx
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
   qdrant:
     image: qdrant/qdrant
     ports:
@@ -35,13 +48,15 @@ services:
       - "8000:8000"
     volumes:
       - videos:/data/videos
+      - rois:/data/rois
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - GATEWAY_API=http://backend-go:8080
-    depends_on:
-      - qdrant
+      - ROI_DIR=/data/rois
 
 volumes:
   qdrant_data:
   videos:
+  rois:
+  pgdata:

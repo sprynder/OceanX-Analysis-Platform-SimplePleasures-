@@ -8,7 +8,7 @@ from app.vision.embedding import embed, EMBEDDING_DIM
 from app.storage.qdrant import client, init_collection
 from app.schemas.schemas import ProcessVideoRequest
 from uuid import uuid4
-from app.config import GATEWAY_API
+from app.config import GATEWAY_API, ROI_DIR
 router = APIRouter(prefix="/process-video")
 
 @router.post("")
@@ -20,6 +20,10 @@ async def process_video(request: ProcessVideoRequest, every_seconds: float = 1.0
     
     frames = extract_frames(video_path, every_seconds)
     init_collection(EMBEDDING_DIM)
+
+    # Create ROI directory for this video
+    video_roi_dir = os.path.join(ROI_DIR, video_id)
+    os.makedirs(video_roi_dir, exist_ok=True)
 
     points = []
     frames_data = []
@@ -40,6 +44,14 @@ async def process_video(request: ProcessVideoRequest, every_seconds: float = 1.0
             
             # Generate ROI UUID
             roi_id = str(uuid4())
+            
+            # Save ROI crop to disk
+            roi_filename = f"{roi_id}.jpg"
+            roi_path = os.path.join(video_roi_dir, roi_filename)
+            roi_crop.save(roi_path, "JPEG")
+            
+            # Create relative path for storage
+            roi_url = f"/rois/{video_id}/{roi_filename}"
             points.append({
                 "id": roi_id,
                 "vector": vector,
@@ -47,7 +59,9 @@ async def process_video(request: ProcessVideoRequest, every_seconds: float = 1.0
                     "frame_idx": roi["frame_idx"],
                     "bbox": roi["bbox"],
                     "roi_id": roi_id,
-                    "video_id": video_id
+                    "video_id": video_id,
+                    "frame_id": frame_id,
+                    "timestamp_sec": timestamp_sec
                 }
             })
             
@@ -56,7 +70,8 @@ async def process_video(request: ProcessVideoRequest, every_seconds: float = 1.0
                 "x1": x1,
                 "y1": y1,
                 "x2": x2,
-                "y2": y2
+                "y2": y2,
+                "roi_url": roi_url
             })
         
         frames_data.append({
