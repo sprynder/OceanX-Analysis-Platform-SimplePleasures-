@@ -146,6 +146,9 @@ func (s *VideoService) SaveProcessingResults(
 		return fmt.Errorf("failed to mark video completed: %w", err)
 	}
 
+	// Trigger clustering asynchronously
+	go s.TriggerClusteringAsync(videoID)
+
 	return nil
 }
 
@@ -209,6 +212,21 @@ func (s *VideoService) TriggerProcessingAsync(video *models.Video) {
 
 		// ML pipeline will populate DB/Qdrant later
 		_ = s.Repo.UpdateStatus(ctx, video.ID, "completed")
+	}()
+}
+
+func (s *VideoService) TriggerClusteringAsync(videoID string) {
+	go func() {
+		ctx := context.Background()
+		fmt.Println("Starting async clustering for video:", videoID)
+
+		err := s.MLClient.ClusterROIs(ctx, videoID)
+		if err != nil {
+			fmt.Printf("Clustering failed for video %s: %v\n", videoID, err)
+			return
+		}
+
+		fmt.Println("Clustering pipeline completed for video:", videoID)
 	}()
 }
 

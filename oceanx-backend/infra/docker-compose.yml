@@ -8,6 +8,8 @@ services:
         - "80:80"
       volumes:
         - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+        - videos:/data/videos:ro
+        - rois:/data/rois:ro
       depends_on:
         - backend-go
         - frontend

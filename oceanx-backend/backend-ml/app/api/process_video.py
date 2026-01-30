@@ -12,7 +12,7 @@ from app.config import GATEWAY_API, ROI_DIR
 router = APIRouter(prefix="/process-video")
 
 @router.post("")
-async def process_video(request: ProcessVideoRequest, every_seconds: float = 1.0):
+async def process_video(request: ProcessVideoRequest, every_seconds: float = 0.5):
     video_path = request.video_path
     video_id = request.video_id
     if not os.path.exists(video_path):

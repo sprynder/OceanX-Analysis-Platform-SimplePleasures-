@@ -45,19 +45,13 @@ const API_BASE =
 const toMediaUrl = (input?: string | null) => {
   if (!input) return "";
   const normalized = input.replace(/\\/g, "/");
-  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
-    return normalized;
-  }
-  if (normalized.startsWith("/media/")) {
-    return normalized;
-  }
-  // Videos: /data/videos/{video_id}.mp4 → /media/videos/{video_id}.mp4
+  // Convert backend paths to nginx media URLs (absolute URLs through nginx)
+  const mediaBase = process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") || "http://localhost";
   if (normalized.startsWith("/data/videos/")) {
-    return `/media/videos/${normalized.replace("/data/videos/", "")}`;
+    return `${mediaBase}/media/videos/${normalized.replace("/data/videos/", "")}`;
   }
-  // ROIs: /data/rois/{video_id}/{roi_id}.jpg → /media/rois/{video_id}/{roi_id}.jpg
   if (normalized.startsWith("/rois/")) {
-    return `/media/rois/${normalized.replace("/rois/", "")}`;
+    return `${mediaBase}/media/rois/${normalized.replace("/rois/", "")}`;
   }
   return normalized;
 };
@@ -282,7 +276,7 @@ export default function Home() {
                                 <img
                                   src={toMediaUrl(roi.roi_url)}
                                   alt={`ROI ${roi.id}`}
-                                  className="mt-2 h-24 w-full rounded-md object-cover"
+                                  className="mt-2 aspect-square w-full rounded-md object-cover"
                                 />
                               ) : (
                                 <div className="mt-2 rounded-md border border-dashed border-slate-200 px-2 py-3 text-center text-[11px] text-slate-400">
@@ -326,7 +320,7 @@ export default function Home() {
                         <img
                           src={toMediaUrl(roi.roi_url)}
                           alt={`ROI ${roi.id}`}
-                          className="mt-2 h-24 w-full rounded-md object-cover"
+                          className="mt-2 aspect-square w-full rounded-md object-cover"
                         />
                       ) : (
                         <div className="mt-2 rounded-md border border-dashed border-slate-200 px-2 py-3 text-center text-[11px] text-slate-400">
