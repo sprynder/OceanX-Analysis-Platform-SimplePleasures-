@@ -9,4 +9,5 @@ type Roi struct {
 	Y1       int
 	X2       int
 	Y2       int
+	RoiUrl   string
 }

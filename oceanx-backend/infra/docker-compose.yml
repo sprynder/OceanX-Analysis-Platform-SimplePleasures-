@@ -48,12 +48,15 @@ services:
       - "8000:8000"
     volumes:
       - videos:/data/videos
+      - rois:/data/rois
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - GATEWAY_API=http://backend-go:8080
+      - ROI_DIR=/data/rois
 
 volumes:
   qdrant_data:
   videos:
+  rois:
   pgdata:

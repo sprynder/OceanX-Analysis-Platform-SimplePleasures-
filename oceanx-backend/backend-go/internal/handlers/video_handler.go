@@ -83,6 +83,28 @@ func (h *VideoHandler) MarkCompleted(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "ok"})
 }
 
+func (h *VideoHandler) UpdateClusters(c *gin.Context) {
+	id := c.Param("id")
+
+	var update models.ROIClusterUpdate
+	if err := c.BindJSON(&update); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	err := h.Service.SaveClusterResults(
+		c.Request.Context(),
+		id,
+		&update,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "clusters updated"})
+}
+
 func (h *VideoHandler) UploadVideo(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {

@@ -125,6 +125,7 @@ func (s *VideoService) SaveProcessingResults(
 				Y1:       roiData.Y1,
 				X2:       roiData.X2,
 				Y2:       roiData.Y2,
+				RoiUrl:   roiData.RoiUrl,
 			})
 		}
 	}
@@ -163,6 +164,29 @@ func (s *VideoService) MarkCompleted(
 	`, frames, rois, id)
 
 	return err
+}
+
+func (s *VideoService) SaveClusterResults(
+	ctx context.Context,
+	videoID string,
+	update *models.ROIClusterUpdate,
+) error {
+	// Convert to the format expected by the repository
+	roiClusters := make([]struct {
+		RoiID     string
+		ClusterID int
+	}, len(update.ROIClusters))
+
+	for i, rc := range update.ROIClusters {
+		roiClusters[i].RoiID = rc.RoiID
+		roiClusters[i].ClusterID = rc.ClusterID
+	}
+
+	if err := s.Repo.UpdateROIClusters(ctx, roiClusters); err != nil {
+		return fmt.Errorf("failed to update ROI clusters: %w", err)
+	}
+
+	return nil
 }
 
 func (s *VideoService) TriggerProcessingAsync(video *models.Video) {
