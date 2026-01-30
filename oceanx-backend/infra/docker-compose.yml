@@ -8,8 +8,11 @@ services:
         - "80:80"
       volumes:
         - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+        - videos:/data/videos:ro
+        - rois:/data/rois:ro
       depends_on:
         - backend-go
+        - frontend
 
   backend-go:
     build: ../backend-go
@@ -54,6 +57,18 @@ services:
       - QDRANT_PORT=6333
       - GATEWAY_API=http://backend-go:8080
       - ROI_DIR=/data/rois
+
+  frontend:
+    build: ../../oceanx-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE=http://localhost
+    depends_on:
+      - backend-go
+    volumes:
+      - videos:/data/videos
+      - rois:/data/rois
 
 volumes:
   qdrant_data:
