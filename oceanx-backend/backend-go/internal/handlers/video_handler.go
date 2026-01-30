@@ -202,10 +202,20 @@ type ClusterGroup struct {
 type DashboardResponse struct {
 	VideoID  string         `json:"video_id"`
 	Clusters []ClusterGroup `json:"clusters"`
+	ROIs     []models.Roi   `json:"rois"`
 }
 
 func (h *VideoHandler) GetVideoClusterDashboard(c *gin.Context) {
 	videoID := c.Param("id")
+
+	allROIs, err := h.Service.GetROIsByVideo(c.Request.Context(), videoID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if allROIs == nil {
+		allROIs = []models.Roi{}
+	}
 
 	// Get all clusters for the video
 	clusters, err := h.Service.GetClustersByVideo(c.Request.Context(), videoID)
@@ -238,5 +248,6 @@ func (h *VideoHandler) GetVideoClusterDashboard(c *gin.Context) {
 	c.JSON(http.StatusOK, DashboardResponse{
 		VideoID:  videoID,
 		Clusters: clusterGroups,
+		ROIs:     allROIs,
 	})
 }
