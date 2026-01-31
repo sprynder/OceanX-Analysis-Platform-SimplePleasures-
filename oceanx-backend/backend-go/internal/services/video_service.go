@@ -31,6 +31,10 @@ func NewVideoService(
 	}
 }
 
+func (s *VideoService) GetAllVideos(ctx context.Context) ([]models.Video, error) {
+	return s.Repo.GetAll(ctx)
+}
+
 func (s *VideoService) SaveUploadedVideo(
 	ctx context.Context,
 	fileHeader *multipart.FileHeader,

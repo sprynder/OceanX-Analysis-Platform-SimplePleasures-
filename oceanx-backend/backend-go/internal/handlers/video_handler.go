@@ -17,6 +17,20 @@ type VideoHandler struct {
 func NewVideoHandler(service *services.VideoService) *VideoHandler {
 	return &VideoHandler{Service: service}
 }
+
+func (h *VideoHandler) ListVideos(c *gin.Context) {
+	videos, err := h.Service.GetAllVideos(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to fetch videos",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, videos)
+}
+
 func (h *VideoHandler) GetVideo(c *gin.Context) {
 	id := c.Param("id")
 

@@ -6,12 +6,15 @@ import { VideoMetadata } from "@/components/VideoMetadata";
 import { DashboardSummary } from "@/components/DashboardSummary";
 import { ClusterCard } from "@/components/ClusterCard";
 import { AllROIsSection } from "@/components/AllROIsSection";
+import { VideoList } from "@/components/VideoList";
+import { VideoUpload } from "@/components/VideoUpload";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
   "http://localhost:8080";
 
 export default function Home() {
+  const [tab, setTab] = useState<"select" | "upload">("select");
   const [videoId, setVideoId] = useState("");
   const [video, setVideo] = useState<Video | null>(null);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
@@ -80,34 +83,48 @@ export default function Home() {
         </header>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end">
-            <div className="flex-1">
-              <label className="text-sm font-medium text-slate-700">
-                Video ID
-              </label>
-              <input
-                value={videoId}
-                onChange={(event) => setVideoId(event.target.value)}
-                placeholder="e.g. 3d3c2e8c-..."
-                className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
-              />
-            </div>
+          <div className="mb-4 flex gap-2 border-b border-slate-200">
             <button
-              onClick={() => loadDashboard(videoId)}
-              className="rounded-xl bg-slate-900 px-6 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-              disabled={loading}
+              onClick={() => setTab("select")}
+              className={`px-4 py-2 font-medium transition ${
+                tab === "select"
+                  ? "border-b-2 border-slate-900 text-slate-900"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
             >
-              {loading ? "Loading..." : "Load dashboard"}
+              Select Existing
+            </button>
+            <button
+              onClick={() => setTab("upload")}
+              className={`px-4 py-2 font-medium transition ${
+                tab === "upload"
+                  ? "border-b-2 border-slate-900 text-slate-900"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Upload New
             </button>
           </div>
-          <div className="mt-3 text-xs text-slate-500">
-            API base: {API_BASE}
-          </div>
+
+          {tab === "select" ? (
+            <VideoList onSelectVideo={loadDashboard} />
+          ) : (
+            <VideoUpload
+              onUploadSuccess={(newVideoId) => {
+                setVideoId(newVideoId);
+                loadDashboard(newVideoId);
+              }}
+            />
+          )}
+
           {error ? (
             <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
               {error}
             </div>
           ) : null}
+          <div className="mt-3 text-xs text-slate-500">
+            API base: {API_BASE}
+          </div>
         </section>
 
         {video ? (
