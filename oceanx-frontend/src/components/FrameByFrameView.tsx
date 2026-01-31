@@ -54,12 +54,12 @@ export function FrameByFrameView({ dashboard }: FrameByFrameViewProps) {
   const totalRoisInFrame = Object.values(frameData).reduce((sum, rois) => sum + rois.length, 0);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
-      <div className="space-y-4">
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden h-[600px]">
+      <div className="flex h-full flex-col gap-4">
         <div>
           <h2 className="text-lg font-semibold mb-2">Frame-by-Frame View</h2>
           <p className="text-sm text-slate-600 mb-4">
-            Frame {currentFrame} of {frameRange.max} â€¢ {totalRoisInFrame} ROIs
+            Frame {currentFrame} of {frameRange.max} • {totalRoisInFrame} ROIs
           </p>
 
           {/* Slider */}
@@ -80,7 +80,7 @@ export function FrameByFrameView({ dashboard }: FrameByFrameViewProps) {
         </div>
 
         {/* Display ROIs grouped by cluster */}
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto pr-1">
           {allClusterIds.map((clusterId) => {
             const rois = frameData[clusterId];
             return (
