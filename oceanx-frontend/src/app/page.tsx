@@ -6,6 +6,7 @@ import { VideoMetadata } from "@/components/VideoMetadata";
 import { DashboardSummary } from "@/components/DashboardSummary";
 import { ClusterCard } from "@/components/ClusterCard";
 import { AllROIsSection } from "@/components/AllROIsSection";
+import { FrameByFrameView } from "@/components/FrameByFrameView";
 import { VideoList } from "@/components/VideoList";
 import { VideoUpload } from "@/components/VideoUpload";
 
@@ -148,6 +149,8 @@ export default function Home() {
                 )}
               </div>
             </div>
+
+            <FrameByFrameView dashboard={dashboard} />
 
             <AllROIsSection rois={dashboard.rois} />
           </section>
