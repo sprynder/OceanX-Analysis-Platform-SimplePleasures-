@@ -1,74 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
-
-type Roi = {
-  id: string;
-  frame_id: string;
-  frame_idx: number;
-  video_id: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  roi_url: string;
-  cluster: number;
-};
-
-type ClusterGroup = {
-  cluster_id: number;
-  roi_count: number;
-  rois: Roi[];
-};
-
-type DashboardResponse = {
-  video_id: string;
-  clusters: ClusterGroup[];
-  rois: Roi[];
-};
-
-type Video = {
-  id: string;
-  filename: string;
-  path: string;
-  status: string;
-  frames_processed: number;
-  rois_detected: number;
-  created_at: string;
-  error?: { String: string; Valid: boolean } | string | null;
-};
+import { useState } from "react";
+import { Video, DashboardResponse } from "@/types";
+import { VideoMetadata } from "@/components/VideoMetadata";
+import { DashboardSummary } from "@/components/DashboardSummary";
+import { ClusterCard } from "@/components/ClusterCard";
+import { AllROIsSection } from "@/components/AllROIsSection";
+import { FrameByFrameView } from "@/components/FrameByFrameView";
+import { VideoList } from "@/components/VideoList";
+import { VideoUpload } from "@/components/VideoUpload";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
   "http://localhost:8080";
 
-const toMediaUrl = (input?: string | null) => {
-  if (!input) return "";
-  const normalized = input.replace(/\\/g, "/");
-  // Convert backend paths to nginx media URLs (absolute URLs through nginx)
-  const mediaBase = process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") || "http://localhost";
-  if (normalized.startsWith("/data/videos/")) {
-    return `${mediaBase}/media/videos/${normalized.replace("/data/videos/", "")}`;
-  }
-  if (normalized.startsWith("/rois/")) {
-    return `${mediaBase}/media/rois/${normalized.replace("/rois/", "")}`;
-  }
-  return normalized;
-};
-
 export default function Home() {
+  const [tab, setTab] = useState<"select" | "upload">("select");
   const [videoId, setVideoId] = useState("");
   const [video, setVideo] = useState<Video | null>(null);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const errorText = useMemo(() => {
-    if (!video?.error) return null;
-    if (typeof video.error === "string") return video.error;
-    if ("String" in video.error && video.error.Valid) return video.error.String;
-    return null;
-  }, [video]);
 
   const loadDashboard = async (id: string) => {
     const trimmed = id.trim();
@@ -132,206 +84,75 @@ export default function Home() {
         </header>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end">
-            <div className="flex-1">
-              <label className="text-sm font-medium text-slate-700">
-                Video ID
-              </label>
-              <input
-                value={videoId}
-                onChange={(event) => setVideoId(event.target.value)}
-                placeholder="e.g. 3d3c2e8c-..."
-                className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
-              />
-            </div>
+          <div className="mb-4 flex gap-2 border-b border-slate-200">
             <button
-              onClick={() => loadDashboard(videoId)}
-              className="rounded-xl bg-slate-900 px-6 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-              disabled={loading}
+              onClick={() => setTab("select")}
+              className={`px-4 py-2 font-medium transition ${
+                tab === "select"
+                  ? "border-b-2 border-slate-900 text-slate-900"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
             >
-              {loading ? "Loading..." : "Load dashboard"}
+              Select Existing
+            </button>
+            <button
+              onClick={() => setTab("upload")}
+              className={`px-4 py-2 font-medium transition ${
+                tab === "upload"
+                  ? "border-b-2 border-slate-900 text-slate-900"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Upload New
             </button>
           </div>
-          <div className="mt-3 text-xs text-slate-500">
-            API base: {API_BASE}
-          </div>
+
+          {tab === "select" ? (
+            <VideoList onSelectVideo={loadDashboard} />
+          ) : (
+            <VideoUpload
+              onUploadSuccess={(newVideoId) => {
+                setVideoId(newVideoId);
+                loadDashboard(newVideoId);
+              }}
+            />
+          )}
+
           {error ? (
             <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
               {error}
             </div>
           ) : null}
+          <div className="mt-3 text-xs text-slate-500">
+            API base: {API_BASE}
+          </div>
         </section>
 
         {video ? (
           <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold">Video metadata</h2>
-              <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">
-                    ID
-                  </dt>
-                  <dd className="mt-1 break-all font-medium text-slate-900">
-                    {video.id}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">
-                    Filename
-                  </dt>
-                  <dd className="mt-1 font-medium text-slate-900">
-                    {video.filename}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">
-                    Status
-                  </dt>
-                  <dd className="mt-1 font-medium text-slate-900">
-                    {video.status}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">
-                    Created
-                  </dt>
-                  <dd className="mt-1 font-medium text-slate-900">
-                    {new Date(video.created_at).toLocaleString()}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">
-                    Frames processed
-                  </dt>
-                  <dd className="mt-1 font-medium text-slate-900">
-                    {video.frames_processed}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-wide text-slate-500">
-                    ROIs detected
-                  </dt>
-                  <dd className="mt-1 font-medium text-slate-900">
-                    {video.rois_detected}
-                  </dd>
-                </div>
-              </dl>
-              {errorText ? (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-                  Error: {errorText}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold">Dashboard summary</h2>
-              <div className="mt-4 grid gap-3 text-sm">
-                <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                  Total clusters: {dashboard?.clusters.length ?? 0}
-                </div>
-                <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                  Total ROIs: {dashboard?.rois.length ?? 0}
-                </div>
-              </div>
-            </div>
+            <VideoMetadata video={video} />
+            <DashboardSummary dashboard={dashboard} />
           </section>
         ) : null}
 
         {dashboard ? (
-          <section className="grid gap-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="grid gap-6 overflow-hidden">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
               <h2 className="text-lg font-semibold">Clusters</h2>
               <div className="mt-4 grid gap-4">
                 {dashboard.clusters.length === 0 ? (
                   <p className="text-sm text-slate-500">No clusters found.</p>
                 ) : (
                   dashboard.clusters.map((cluster) => (
-                    <div
-                      key={cluster.cluster_id}
-                      className="rounded-xl border border-slate-100 bg-slate-50 p-4"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-semibold text-slate-900">
-                          Cluster {cluster.cluster_id}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          ROIs: {cluster.roi_count}
-                        </div>
-                      </div>
-                      {cluster.rois.length > 0 ? (
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {cluster.rois.map((roi) => (
-                            <div
-                              key={roi.id}
-                              className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600"
-                            >
-                              <div className="font-semibold text-slate-800">
-                                ROI {roi.id}
-                              </div>
-                              <div className="mt-1">Frame: {roi.frame_idx}</div>
-                              <div>
-                                Box: ({roi.x1}, {roi.y1}) → ({roi.x2}, {roi.y2})
-                              </div>
-                              {roi.roi_url ? (
-                                <img
-                                  src={toMediaUrl(roi.roi_url)}
-                                  alt={`ROI ${roi.id}`}
-                                  className="mt-2 aspect-square w-full rounded-md object-cover"
-                                />
-                              ) : (
-                                <div className="mt-2 rounded-md border border-dashed border-slate-200 px-2 py-3 text-center text-[11px] text-slate-400">
-                                  No ROI image
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="mt-2 text-xs text-slate-500">
-                          No ROIs in this cluster.
-                        </p>
-                      )}
-                    </div>
+                    <ClusterCard key={cluster.cluster_id} cluster={cluster} />
                   ))
                 )}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold">All ROIs</h2>
-              {dashboard.rois.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-500">No ROIs found.</p>
-              ) : (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {dashboard.rois.map((roi) => (
-                    <div
-                      key={roi.id}
-                      className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600"
-                    >
-                      <div className="font-semibold text-slate-800">
-                        ROI {roi.id}
-                      </div>
-                      <div className="mt-1">Cluster: {roi.cluster}</div>
-                      <div>Frame: {roi.frame_idx}</div>
-                      <div>
-                        Box: ({roi.x1}, {roi.y1}) → ({roi.x2}, {roi.y2})
-                      </div>
-                      {roi.roi_url ? (
-                        <img
-                          src={toMediaUrl(roi.roi_url)}
-                          alt={`ROI ${roi.id}`}
-                          className="mt-2 aspect-square w-full rounded-md object-cover"
-                        />
-                      ) : (
-                        <div className="mt-2 rounded-md border border-dashed border-slate-200 px-2 py-3 text-center text-[11px] text-slate-400">
-                          No ROI image
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <FrameByFrameView dashboard={dashboard} />
+
+            <AllROIsSection rois={dashboard.rois} />
           </section>
         ) : null}
       </main>

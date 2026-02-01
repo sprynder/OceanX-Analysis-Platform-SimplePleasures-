@@ -100,6 +100,43 @@ func (r *VideoRepository) GetByID(
 	return &v, nil
 }
 
+func (r *VideoRepository) GetAll(ctx context.Context) ([]models.Video, error) {
+	query := `
+		SELECT id, filename, path, status,
+		       frames_processed, rois_detected,
+		       error, created_at
+		FROM videos
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	videos := make([]models.Video, 0)
+	for rows.Next() {
+		var v models.Video
+		err := rows.Scan(
+			&v.ID,
+			&v.Filename,
+			&v.Path,
+			&v.Status,
+			&v.FramesProcessed,
+			&v.RoisDetected,
+			&v.Error,
+			&v.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		videos = append(videos, v)
+	}
+
+	return videos, rows.Err()
+}
+
 func (r *VideoRepository) SaveFrames(
 	ctx context.Context,
 	videoID string,
