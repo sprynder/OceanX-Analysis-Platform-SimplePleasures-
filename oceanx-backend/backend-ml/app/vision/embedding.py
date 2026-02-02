@@ -15,3 +15,25 @@ def embed(image):
         feat = feat / feat.norm(dim=-1, keepdim=True)
 
     return feat.squeeze(0).cpu().numpy()
+
+
+def embed_batch(images: list):
+    """
+    Generate embeddings for multiple ROI crops in batch.
+    
+    Args:
+        images: List of PIL Images
+    
+    Returns:
+        List of numpy arrays: embeddings for each image
+    """
+    if not images:
+        return []
+    
+    with torch.no_grad():
+        # Preprocess all images
+        tensors = torch.stack([clip_preprocess(img) for img in images]).to(DEVICE)  # [B, 3, H, W]
+        feat = clip_model.encode_image(tensors)
+        feat = feat / feat.norm(dim=-1, keepdim=True)
+    
+    return [f.cpu().numpy() for f in feat]

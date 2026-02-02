@@ -67,3 +67,55 @@ def detect_rois(image: Image.Image, frame_id: int):
         })
 
     return roi_records
+
+
+def detect_rois_batch(images: list, frame_ids: list):
+    """
+    Detect ROIs in multiple frames using batch processing.
+    
+    Args:
+        images: List of PIL Images
+        frame_ids: List of frame indices corresponding to each image
+    
+    Returns:
+        List of lists: roi_records for each frame
+    """
+    if yolo_model_1 is None or yolo_model_2 is None:
+        return [detect_rois(img, fid) for img, fid in zip(images, frame_ids)]
+    
+    # Batch detection
+    r1_results = yolo_model_1(images, conf=CONF_THRESHOLD, iou=IOU_THRESHOLD)
+    r2_results = yolo_model_2(images, conf=CONF_THRESHOLD, iou=IOU_THRESHOLD)
+    
+    batch_roi_records = []
+    
+    for idx, (frame_id, r1, r2) in enumerate(zip(frame_ids, r1_results, r2_results)):
+        if len(r1.boxes) == 0 and len(r2.boxes) == 0:
+            batch_roi_records.append([])
+            continue
+        
+        # Combine boxes and scores
+        boxes = torch.cat([
+            r1.boxes.xyxy.cpu() if len(r1.boxes) else torch.empty((0, 4)),
+            r2.boxes.xyxy.cpu() if len(r2.boxes) else torch.empty((0, 4))
+        ])
+        scores = torch.cat([
+            r1.boxes.conf.cpu() if len(r1.boxes) else torch.empty((0,)),
+            r2.boxes.conf.cpu() if len(r2.boxes) else torch.empty((0,))
+        ])
+        
+        keep = nms(boxes, scores, NMS_IOU_THRESH)
+        boxes = boxes[keep]
+        
+        roi_records = []
+        for box in boxes:
+            x1, y1, x2, y2 = map(int, box.tolist())
+            roi_records.append({
+                "frame_idx": frame_id,
+                "bbox": [x1, y1, x2, y2],
+                "roi_id": f"{frame_id}_{uuid.uuid4()}"
+            })
+        
+        batch_roi_records.append(roi_records)
+    
+    return batch_roi_records
