@@ -1,7 +1,7 @@
 # backend-ml/app/api/process_video.py
 import os
 import requests
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException
 from app.video.extract_frames import extract_frames
 from app.vision.roi import detect_rois
 from app.vision.embedding import embed, EMBEDDING_DIM
@@ -9,6 +9,7 @@ from app.storage.qdrant import client, init_collection
 from app.schemas.schemas import ProcessVideoRequest
 from uuid import uuid4
 from app.config import GATEWAY_API, ROI_DIR
+
 router = APIRouter(prefix="/process-video")
 
 @router.post("")

@@ -11,3 +11,4 @@ torchvision
 open-clip-torch
 hdbscan
 scikit-learn
+onnxruntime
