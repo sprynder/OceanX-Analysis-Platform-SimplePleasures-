@@ -150,8 +150,8 @@ func (s *VideoService) SaveProcessingResults(
 		return fmt.Errorf("failed to mark video completed: %w", err)
 	}
 
-	// Trigger clustering asynchronously
-	go s.TriggerClusteringAsync(videoID)
+	// Trigger clustering asynchronously with default parameters
+	go s.TriggerClusteringAsync(videoID, nil)
 
 	return nil
 }
@@ -219,18 +219,24 @@ func (s *VideoService) TriggerProcessingAsync(video *models.Video) {
 	}()
 }
 
-func (s *VideoService) TriggerClusteringAsync(videoID string) {
+func (s *VideoService) TriggerClusteringAsync(videoID string, params *clients.ClusterParams) {
 	go func() {
 		ctx := context.Background()
-		fmt.Println("Starting async clustering for video:", videoID)
+		fmt.Printf("[VideoService] Starting async clustering for video: %s\n", videoID)
+		if params != nil {
+			fmt.Printf("[VideoService] Clustering params: min_cluster_size=%d, method=%s, pca=%d\n",
+				params.MinClusterSize, params.ClusterSelectionMethod, params.PCAComponents)
+		} else {
+			fmt.Printf("[VideoService] Using default clustering params\n")
+		}
 
-		err := s.MLClient.ClusterROIs(ctx, videoID)
+		err := s.MLClient.ClusterROIs(ctx, videoID, params)
 		if err != nil {
-			fmt.Printf("Clustering failed for video %s: %v\n", videoID, err)
+			fmt.Printf("[VideoService] Clustering failed for video %s: %v\n", videoID, err)
 			return
 		}
 
-		fmt.Println("Clustering pipeline completed for video:", videoID)
+		fmt.Printf("[VideoService] Clustering pipeline completed for video: %s\n", videoID)
 	}()
 }
 

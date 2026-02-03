@@ -10,6 +10,7 @@ import { FrameByFrameView } from "@/components/FrameByFrameView";
 import { VideoList } from "@/components/VideoList";
 import { VideoUpload } from "@/components/VideoUpload";
 import { ProcessingProgress } from "@/components/ProcessingProgress";
+import { ClusterControls } from "@/components/ClusterControls";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
@@ -142,6 +143,19 @@ export default function Home() {
             <VideoMetadata video={video} />
             <DashboardSummary dashboard={dashboard} />
           </section>
+        ) : null}
+
+        {video && dashboard ? (
+          <ClusterControls
+            videoId={videoId}
+            onReclusterStart={() => {
+              console.log("[Page] Reclustering started");
+            }}
+            onReclusterComplete={() => {
+              console.log("[Page] Reclustering complete, reloading dashboard");
+              loadDashboard(videoId);
+            }}
+          />
         ) : null}
 
         {dashboard ? (

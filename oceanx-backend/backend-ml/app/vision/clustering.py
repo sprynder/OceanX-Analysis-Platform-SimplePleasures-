@@ -4,14 +4,26 @@ from sklearn.decomposition import PCA
 import hdbscan
 
 
-def cluster_embeddings(embeddings, min_cluster_size=5, pca_components=50):
+def cluster_embeddings(
+    embeddings,
+    min_cluster_size=5,
+    min_samples=None,
+    cluster_selection_epsilon=0.0,
+    max_cluster_size=None,
+    cluster_selection_method='eom',
+    pca_components=50
+):
     """
     Cluster embeddings using HDBSCAN.
     
     Args:
         embeddings: numpy array of shape (n_samples, n_features)
-        min_cluster_size: minimum cluster size for HDBSCAN
-        pca_components: number of PCA components to reduce to (None to skip)
+        min_cluster_size: minimum cluster size for HDBSCAN (default: 5)
+        min_samples: minimum samples in a neighborhood (default: None = min_cluster_size)
+        cluster_selection_epsilon: distance threshold for cluster merging (default: 0.0)
+        max_cluster_size: maximum cluster size (default: None = no limit)
+        cluster_selection_method: 'eom' (Excess of Mass) or 'leaf' (default: 'eom')
+        pca_components: number of PCA components to reduce to (None to skip, default: 50)
     
     Returns:
         cluster_labels: numpy array of cluster assignments (-1 for noise)
@@ -25,13 +37,18 @@ def cluster_embeddings(embeddings, min_cluster_size=5, pca_components=50):
     else:
         embeddings_reduced = embeddings
     
+    # Normalize HDBSCAN parameters
+    # hdbscan expects max_cluster_size to be an int (0 = no limit)
+    max_cluster_size_value = 0 if max_cluster_size is None else max_cluster_size
+
     # Cluster with HDBSCAN
     clusterer = hdbscan.HDBSCAN(
         min_cluster_size=min_cluster_size,
+        min_samples=min_samples,
         metric='euclidean',
-        cluster_selection_epsilon=0.00,
-        max_cluster_size=100,
-        cluster_selection_method='leaf'
+        cluster_selection_epsilon=cluster_selection_epsilon,
+        max_cluster_size=max_cluster_size_value,
+        cluster_selection_method=cluster_selection_method
     )
     
     cluster_labels = clusterer.fit_predict(embeddings_reduced)

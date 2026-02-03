@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"oceanx/backend-go/internal/clients"
 	"oceanx/backend-go/internal/models"
 	"oceanx/backend-go/internal/services"
 	"oceanx/backend-go/internal/websocket"
@@ -140,6 +141,46 @@ func (h *VideoHandler) UpdateClusters(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "clusters updated"})
+}
+
+type ReclusterRequest struct {
+	MinClusterSize          int     `json:"min_cluster_size"`
+	MinSamples              *int    `json:"min_samples"`
+	ClusterSelectionEpsilon float64 `json:"cluster_selection_epsilon"`
+	MaxClusterSize          *int    `json:"max_cluster_size"`
+	ClusterSelectionMethod  string  `json:"cluster_selection_method"`
+	PCAComponents           int     `json:"pca_components"`
+}
+
+func (h *VideoHandler) ReclusterVideo(c *gin.Context) {
+	videoID := c.Param("id")
+
+	var req ReclusterRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	// Convert to ClusterParams
+	params := &clients.ClusterParams{
+		MinClusterSize:          req.MinClusterSize,
+		MinSamples:              req.MinSamples,
+		ClusterSelectionEpsilon: req.ClusterSelectionEpsilon,
+		MaxClusterSize:          req.MaxClusterSize,
+		ClusterSelectionMethod:  req.ClusterSelectionMethod,
+		PCAComponents:           req.PCAComponents,
+	}
+
+	log.Printf("[Recluster] Triggering for video %s with params: min_cluster=%d, method=%s\n",
+		videoID, params.MinClusterSize, params.ClusterSelectionMethod)
+
+	// Trigger clustering asynchronously
+	h.Service.TriggerClusteringAsync(videoID, params)
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"status":   "clustering started",
+		"video_id": videoID,
+	})
 }
 
 func (h *VideoHandler) UploadVideo(c *gin.Context) {

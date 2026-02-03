@@ -29,6 +29,7 @@ func SetupRouter(videoHandler *handlers.VideoHandler) *gin.Engine {
 	r.GET("/videos/:id", videoHandler.GetVideo)
 	r.POST("/videos/:id/complete", videoHandler.CompleteProcessing)
 	r.POST("/videos/:id/clusters", videoHandler.UpdateClusters)
+	r.POST("/videos/:id/recluster", videoHandler.ReclusterVideo)
 	r.POST("/videos/:id/progress", videoHandler.ReceiveProgress)
 	r.GET("/videos/:id/dashboard", videoHandler.GetVideoClusterDashboard)
 
