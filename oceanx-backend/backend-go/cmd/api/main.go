@@ -13,6 +13,7 @@ import (
 	"oceanx/backend-go/internal/repositories"
 	"oceanx/backend-go/internal/router"
 	"oceanx/backend-go/internal/services"
+	"oceanx/backend-go/internal/websocket"
 )
 
 func main() {
@@ -38,7 +39,12 @@ func main() {
 		mlClient,
 		"/data/videos",
 	)
-	videoHandler := handlers.NewVideoHandler(videoService)
+
+	// Initialize WebSocket manager
+	wsManager := websocket.NewManager()
+	wsManager.Start()
+
+	videoHandler := handlers.NewVideoHandler(videoService, wsManager)
 
 	r := router.SetupRouter(videoHandler)
 

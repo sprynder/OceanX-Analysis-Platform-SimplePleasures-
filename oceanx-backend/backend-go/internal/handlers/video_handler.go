@@ -1,21 +1,25 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
 	"oceanx/backend-go/internal/models"
 	"oceanx/backend-go/internal/services"
+	"oceanx/backend-go/internal/websocket"
 
 	"github.com/gin-gonic/gin"
+	ws "github.com/gorilla/websocket"
 )
 
 type VideoHandler struct {
-	Service *services.VideoService
+	Service   *services.VideoService
+	WsManager *websocket.Manager
 }
 
-func NewVideoHandler(service *services.VideoService) *VideoHandler {
-	return &VideoHandler{Service: service}
+func NewVideoHandler(service *services.VideoService, wsManager *websocket.Manager) *VideoHandler {
+	return &VideoHandler{Service: service, WsManager: wsManager}
 }
 
 func (h *VideoHandler) ListVideos(c *gin.Context) {
@@ -96,6 +100,24 @@ func (h *VideoHandler) MarkCompleted(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "ok"})
+}
+
+func (h *VideoHandler) ReceiveProgress(c *gin.Context) {
+	videoID := c.Param("id")
+
+	var event websocket.ProgressEvent
+	if err := c.BindJSON(&event); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	log.Printf("[Progress] Received event for video %s: type=%s, frames=%d, rois=%d\n",
+		videoID, event.Type, event.FramesProcessed, event.ROIsDetected)
+
+	// Broadcast to all WebSocket clients for this video
+	h.BroadcastProgress(videoID, event)
+
+	c.JSON(http.StatusOK, gin.H{"status": "received"})
 }
 
 func (h *VideoHandler) UpdateClusters(c *gin.Context) {
@@ -264,4 +286,46 @@ func (h *VideoHandler) GetVideoClusterDashboard(c *gin.Context) {
 		Clusters: clusterGroups,
 		ROIs:     allROIs,
 	})
+}
+
+var wsUpgrader = ws.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins for now
+	},
+}
+
+func (h *VideoHandler) WebSocketProgress(c *gin.Context) {
+	videoID := c.Param("id")
+
+	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to upgrade connection"})
+		return
+	}
+
+	client := &websocket.ClientConn{
+		VideoID: videoID,
+		Conn:    conn,
+	}
+
+	h.WsManager.Register(client)
+
+	// Keep connection open and listen for disconnections
+	go func() {
+		defer func() {
+			h.WsManager.Unregister(client)
+		}()
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				break
+			}
+		}
+	}()
+}
+
+// BroadcastProgress sends a progress event to all WebSocket clients for a video
+func (h *VideoHandler) BroadcastProgress(videoID string, event websocket.ProgressEvent) {
+	event.VideoID = videoID
+	h.WsManager.Broadcast(event)
 }

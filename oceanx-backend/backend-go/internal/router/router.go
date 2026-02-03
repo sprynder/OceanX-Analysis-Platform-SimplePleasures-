@@ -29,10 +29,14 @@ func SetupRouter(videoHandler *handlers.VideoHandler) *gin.Engine {
 	r.GET("/videos/:id", videoHandler.GetVideo)
 	r.POST("/videos/:id/complete", videoHandler.CompleteProcessing)
 	r.POST("/videos/:id/clusters", videoHandler.UpdateClusters)
+	r.POST("/videos/:id/progress", videoHandler.ReceiveProgress)
+	r.GET("/videos/:id/dashboard", videoHandler.GetVideoClusterDashboard)
+
+	// WebSocket endpoint for real-time progress
+	r.GET("/ws/videos/:id", videoHandler.WebSocketProgress)
 
 	// ROI endpoints
 	r.GET("/videos/:id/rois", videoHandler.ListROIs)
-	r.GET("/videos/:id/dashboard", videoHandler.GetVideoClusterDashboard)
 	r.GET("/rois/:roi_id", videoHandler.GetROI)
 
 	return r

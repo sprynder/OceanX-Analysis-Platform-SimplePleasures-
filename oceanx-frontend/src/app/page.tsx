@@ -9,6 +9,7 @@ import { AllROIsSection } from "@/components/AllROIsSection";
 import { FrameByFrameView } from "@/components/FrameByFrameView";
 import { VideoList } from "@/components/VideoList";
 import { VideoUpload } from "@/components/VideoUpload";
+import { ProcessingProgress } from "@/components/ProcessingProgress";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
@@ -21,6 +22,7 @@ export default function Home() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const loadDashboard = async (id: string) => {
     const trimmed = id.trim();
@@ -108,15 +110,22 @@ export default function Home() {
           </div>
 
           {tab === "select" ? (
-            <VideoList onSelectVideo={loadDashboard} />
+            <VideoList onSelectVideo={(id) => {
+              setVideoId(id);
+              setIsProcessing(false);  // Not a new upload, just viewing
+              loadDashboard(id);
+            }} />
           ) : (
             <VideoUpload
               onUploadSuccess={(newVideoId) => {
                 setVideoId(newVideoId);
+                setIsProcessing(true);
                 loadDashboard(newVideoId);
               }}
             />
           )}
+
+          <ProcessingProgress videoId={videoId} isProcessing={isProcessing} />
 
           {error ? (
             <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">
