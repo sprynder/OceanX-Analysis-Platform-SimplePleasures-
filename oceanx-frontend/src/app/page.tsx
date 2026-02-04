@@ -18,12 +18,13 @@ const API_BASE =
 
 export default function Home() {
   const [tab, setTab] = useState<"select" | "upload">("select");
+  const [uploadVideoId, setUploadVideoId] = useState<string | null>(null);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [videoId, setVideoId] = useState("");
   const [video, setVideo] = useState<Video | null>(null);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const loadDashboard = async (id: string) => {
     const trimmed = id.trim();
@@ -113,20 +114,21 @@ export default function Home() {
           {tab === "select" ? (
             <VideoList onSelectVideo={(id) => {
               setVideoId(id);
-              setIsProcessing(false);  // Not a new upload, just viewing
+              setSelectedVideoId(id);
               loadDashboard(id);
             }} />
           ) : (
             <VideoUpload
               onUploadSuccess={(newVideoId) => {
                 setVideoId(newVideoId);
-                setIsProcessing(true);
+                setUploadVideoId(newVideoId);
                 loadDashboard(newVideoId);
               }}
             />
           )}
 
-          <ProcessingProgress videoId={videoId} isProcessing={isProcessing} />
+          <ProcessingProgress videoId={uploadVideoId} label="Upload progress" />
+          <ProcessingProgress videoId={selectedVideoId} label="Selected video progress" />
 
           {error ? (
             <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600">

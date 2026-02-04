@@ -2,16 +2,16 @@ import { useVideoProgress } from '@/hooks/useVideoProgress';
 
 interface ProcessingProgressProps {
   videoId: string | null;
-  isProcessing: boolean;
+  label?: string;
 }
 
 export function ProcessingProgress({
   videoId,
-  isProcessing,
+  label,
 }: ProcessingProgressProps) {
   const { isConnected, lastEvent } = useVideoProgress(videoId);
 
-  if (!isProcessing || !lastEvent) return null;
+  if (!videoId || !lastEvent) return null;
 
   const { frames_processed, rois_detected, message, type, total_frames } = lastEvent;
 
@@ -24,6 +24,7 @@ export function ProcessingProgress({
     <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-blue-900">
+          {label ? `${label} · ` : ''}
           {type === 'processing_complete'
             ? '✓ Processing Complete'
             : '⏳ Processing Video'}
