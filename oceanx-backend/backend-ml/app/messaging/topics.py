@@ -1,0 +1,6 @@
+VIDEO_UPLOADED = "video.uploaded"
+FRAME_SAMPLED = "frame.sampled"
+ROI_DETECTED = "roi.detected"
+ROI_EMBEDDED = "roi.embedded"
+VIDEO_CLUSTER_REQUESTED = "video.cluster.requested"
+VIDEO_CLUSTERED = "video.clustered"
