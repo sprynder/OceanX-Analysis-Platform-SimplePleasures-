@@ -8,6 +8,7 @@ CREATE TABLE rois (
     x2 INT NOT NULL,
     y2 INT NOT NULL,
     cluster INT DEFAULT -1,
+    cluster_name TEXT DEFAULT '',
     roi_url TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT now()
 );

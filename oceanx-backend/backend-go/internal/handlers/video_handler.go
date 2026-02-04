@@ -143,6 +143,30 @@ func (h *VideoHandler) UpdateClusters(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "clusters updated"})
 }
 
+type UpdateClusterNameRequest struct {
+	ClusterID   int    `json:"cluster_id"`
+	ClusterName string `json:"cluster_name"`
+}
+
+func (h *VideoHandler) UpdateClusterName(c *gin.Context) {
+	videoID := c.Param("id")
+
+	var req UpdateClusterNameRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	err := h.Service.UpdateClusterName(c.Request.Context(), videoID, req.ClusterID, req.ClusterName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.Printf("[ClusterName] Updated cluster %d for video %s to name: %s", req.ClusterID, videoID, req.ClusterName)
+	c.JSON(http.StatusOK, gin.H{"status": "cluster name updated"})
+}
+
 type ReclusterRequest struct {
 	MinClusterSize          int     `json:"min_cluster_size"`
 	MinSamples              *int    `json:"min_samples"`

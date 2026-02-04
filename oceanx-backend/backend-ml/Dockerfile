@@ -18,4 +18,4 @@ COPY models/benthic_object_detector.pt ./models/benthic_object_detector.pt
 COPY models/midwater_object_detector.pt ./models/midwater_object_detector.pt
 COPY app ./app
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

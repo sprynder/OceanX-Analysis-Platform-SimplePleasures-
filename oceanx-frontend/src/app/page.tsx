@@ -74,6 +74,35 @@ export default function Home() {
     }
   };
 
+  const handleClusterNameUpdate = (clusterId: number, clusterName: string) => {
+    setDashboard((prev) => {
+      if (!prev) return prev;
+
+      const updatedClusters = prev.clusters.map((cluster) => {
+        if (cluster.cluster_id !== clusterId) return cluster;
+        return {
+          ...cluster,
+          rois: cluster.rois.map((roi) => ({
+            ...roi,
+            cluster_name: clusterName,
+          })),
+        };
+      });
+
+      const updatedRois = prev.rois.map((roi) =>
+        roi.cluster === clusterId
+          ? { ...roi, cluster_name: clusterName }
+          : roi
+      );
+
+      return {
+        ...prev,
+        clusters: updatedClusters,
+        rois: updatedRois,
+      };
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
@@ -169,7 +198,12 @@ export default function Home() {
                   <p className="text-sm text-slate-500">No clusters found.</p>
                 ) : (
                   dashboard.clusters.map((cluster) => (
-                    <ClusterCard key={cluster.cluster_id} cluster={cluster} />
+                    <ClusterCard 
+                      key={cluster.cluster_id} 
+                      cluster={cluster} 
+                      videoId={videoId}
+                      onNameUpdate={handleClusterNameUpdate}
+                    />
                   ))
                 )}
               </div>

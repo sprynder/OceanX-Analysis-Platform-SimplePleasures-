@@ -270,3 +270,12 @@ func (s *VideoService) GetClustersByVideo(
 ) ([]repositories.ClusterInfo, error) {
 	return s.Repo.GetClustersByVideo(ctx, videoID)
 }
+
+func (s *VideoService) UpdateClusterName(
+	ctx context.Context,
+	videoID string,
+	clusterID int,
+	clusterName string,
+) error {
+	return s.Repo.UpdateClusterName(ctx, videoID, clusterID, clusterName)
+}
