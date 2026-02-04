@@ -22,11 +22,20 @@ async def cluster_rois(request: ClusterROIsRequest):
     Retrieves all ROI embeddings for a given video from Qdrant,
     clusters them, and returns the mapping of ROI IDs to cluster IDs.
     """
+    print(f"[ClusterROIs] Received request for video: {request.video_id}")
+    print(f"[ClusterROIs] Parameters: min_cluster_size={request.min_cluster_size}, "
+          f"method={request.cluster_selection_method}, pca={request.pca_components}")
+    
     video_id = request.video_id
     min_cluster_size = request.min_cluster_size
+    min_samples = request.min_samples
+    cluster_selection_epsilon = request.cluster_selection_epsilon
+    max_cluster_size = request.max_cluster_size
+    cluster_selection_method = request.cluster_selection_method
     pca_components = request.pca_components
     
     # Retrieve all embeddings for the video from Qdrant
+    print(f"[ClusterROIs] Fetching embeddings from Qdrant for video {video_id}")
     try:
         video_filter = Filter(must=[FieldCondition(key="video_id", match=MatchValue(value=video_id))])
         search_result = client.scroll(
@@ -48,6 +57,8 @@ async def cluster_rois(request: ClusterROIsRequest):
             detail=f"No ROIs found for video {video_id}",
         )
     
+    print(f"[ClusterROIs] Retrieved {len(points)} ROI embeddings from Qdrant")
+    
     # Extract embeddings and ROI IDs
     embeddings = []
     roi_ids = []
@@ -59,10 +70,15 @@ async def cluster_rois(request: ClusterROIsRequest):
     embeddings = np.array(embeddings)
 
     # Perform clustering
+    print(f"[ClusterROIs] Starting clustering with {len(embeddings)} embeddings")
     try:
         cluster_labels = cluster_embeddings(
             embeddings,
             min_cluster_size=min_cluster_size,
+            min_samples=min_samples,
+            cluster_selection_epsilon=cluster_selection_epsilon,
+            max_cluster_size=max_cluster_size,
+            cluster_selection_method=cluster_selection_method,
             pca_components=pca_components,
         )
     except Exception as e:
@@ -70,6 +86,8 @@ async def cluster_rois(request: ClusterROIsRequest):
             status_code=500,
             detail=f"Clustering failed: {str(e)}",
         )
+    
+    print(f"[ClusterROIs] Clustering complete. Found {len(set(c for c in cluster_labels if c != -1))} clusters")
     
     # Map ROI IDs to cluster IDs
     roi_clusters = [
@@ -80,6 +98,7 @@ async def cluster_rois(request: ClusterROIsRequest):
     # Send clustering results to Go backend
     import requests
     from app.config import GATEWAY_API
+    print(f"[ClusterROIs] Sending {len(roi_clusters)} cluster assignments to Go backend")
     try:
         payload = {
             "video_id": video_id,
@@ -92,8 +111,9 @@ async def cluster_rois(request: ClusterROIsRequest):
             json=payload,
             timeout=5
         )
+        print(f"[ClusterROIs] Successfully sent cluster results to Go backend")
     except Exception as e:
-        print(f"Warning: Failed to notify Go backend of clustering results: {e}")
+        print(f"[ClusterROIs] Warning: Failed to notify Go backend of clustering results: {e}")
 
     # Count unique clusters (excluding noise with -1)
     unique_clusters = len(set(c for c in cluster_labels if c != -1))

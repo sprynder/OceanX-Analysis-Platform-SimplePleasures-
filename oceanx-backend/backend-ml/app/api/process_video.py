@@ -11,6 +11,22 @@ from uuid import uuid4
 from app.config import GATEWAY_API, ROI_DIR
 router = APIRouter(prefix="/process-video")
 
+def send_progress_event(video_id: str, event_type: str, **kwargs):
+    """Send a progress event to the Go backend"""
+    try:
+        payload = {
+            "type": event_type,
+            "video_id": video_id,
+            **kwargs
+        }
+        requests.post(
+            f"{GATEWAY_API}/videos/{video_id}/progress",
+            json=payload,
+            timeout=2
+        )
+    except Exception as e:
+        print(f"Failed to send progress event: {e}")
+
 @router.post("")
 async def process_video(request: ProcessVideoRequest, every_seconds: float = 0.5):
     video_path = request.video_path
@@ -29,6 +45,8 @@ async def process_video(request: ProcessVideoRequest, every_seconds: float = 0.5
     frames_data = []
     
     print("Processing frames and extracting ROIs...")
+    send_progress_event(video_id, "processing_started", message=f"Starting processing with {len(frames)} frames")
+    
     for frame_idx, frame in enumerate(frames):
         rois = detect_rois(frame, frame_idx)
         timestamp_sec = frame_idx * every_seconds
@@ -81,6 +99,18 @@ async def process_video(request: ProcessVideoRequest, every_seconds: float = 0.5
             "rois": rois_data
         })
 
+        # Send progress event every 3 frames
+        if (frame_idx + 1) % 3 == 0:
+            send_progress_event(
+                video_id,
+                "frame_progress",
+                frame_index=frame_idx,
+                frames_processed=frame_idx + 1,
+                total_frames=len(frames),
+                rois_detected=len(points),
+                message=f"Processed {frame_idx + 1}/{len(frames)} frames, found {len(points)} ROIs"
+            )
+
     if points:
         client.upsert(collection_name="roi_embeddings", points=points)
 
@@ -93,6 +123,16 @@ async def process_video(request: ProcessVideoRequest, every_seconds: float = 0.5
         f"{GATEWAY_API}/videos/{video_id}/complete",
         json=response_payload,
         timeout=5
+    )
+    
+    # Send final completion event
+    send_progress_event(
+        video_id,
+        "processing_complete",
+        message="Video processing complete",
+        frames_processed=len(frames),
+        total_frames=len(frames),
+        rois_detected=len(points)
     )
     
     return response_payload

@@ -11,7 +11,7 @@ func (r *VideoRepository) UpdateROIClusters(ctx context.Context, roiClusters []s
 	RoiID     string
 	ClusterID int
 }) error {
-	query := `UPDATE rois SET cluster = $1 WHERE id = $2`
+	query := `UPDATE rois SET cluster = $1, cluster_name = '' WHERE id = $2`
 	for _, rc := range roiClusters {
 		_, err := r.DB.ExecContext(ctx, query, rc.ClusterID, rc.RoiID)
 		if err != nil {
@@ -23,7 +23,7 @@ func (r *VideoRepository) UpdateROIClusters(ctx context.Context, roiClusters []s
 
 // GetROIsByVideo retrieves all ROIs for a given video
 func (r *VideoRepository) GetROIsByVideo(ctx context.Context, videoID string) ([]models.Roi, error) {
-	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster 
+	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster, cluster_name 
 	          FROM rois WHERE video_id = $1 ORDER BY id`
 
 	rows, err := r.DB.QueryContext(ctx, query, videoID)
@@ -36,10 +36,11 @@ func (r *VideoRepository) GetROIsByVideo(ctx context.Context, videoID string) ([
 	for rows.Next() {
 		var roi models.Roi
 		var roiUrl sql.NullString
+		var clusterName sql.NullString
 
 		err := rows.Scan(
 			&roi.ID, &roi.FrameID, &roi.FrameIdx, &roi.VideoID,
-			&roi.X1, &roi.Y1, &roi.X2, &roi.Y2, &roiUrl, &roi.Cluster,
+			&roi.X1, &roi.Y1, &roi.X2, &roi.Y2, &roiUrl, &roi.Cluster, &clusterName,
 		)
 		if err != nil {
 			return nil, err
@@ -47,6 +48,9 @@ func (r *VideoRepository) GetROIsByVideo(ctx context.Context, videoID string) ([
 
 		if roiUrl.Valid {
 			roi.RoiUrl = roiUrl.String
+		}
+		if clusterName.Valid {
+			roi.ClusterName = clusterName.String
 		}
 		rois = append(rois, roi)
 	}
@@ -56,7 +60,7 @@ func (r *VideoRepository) GetROIsByVideo(ctx context.Context, videoID string) ([
 
 // GetROIsByVideoAndCluster retrieves ROIs for a video filtered by cluster
 func (r *VideoRepository) GetROIsByVideoAndCluster(ctx context.Context, videoID string, clusterID int) ([]models.Roi, error) {
-	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster 
+	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster, cluster_name 
 	          FROM rois WHERE video_id = $1 AND cluster = $2 ORDER BY id`
 
 	rows, err := r.DB.QueryContext(ctx, query, videoID, clusterID)
@@ -69,10 +73,11 @@ func (r *VideoRepository) GetROIsByVideoAndCluster(ctx context.Context, videoID 
 	for rows.Next() {
 		var roi models.Roi
 		var roiUrl sql.NullString
+		var clusterName sql.NullString
 
 		err := rows.Scan(
 			&roi.ID, &roi.FrameID, &roi.FrameIdx, &roi.VideoID,
-			&roi.X1, &roi.Y1, &roi.X2, &roi.Y2, &roiUrl, &roi.Cluster,
+			&roi.X1, &roi.Y1, &roi.X2, &roi.Y2, &roiUrl, &roi.Cluster, &clusterName,
 		)
 		if err != nil {
 			return nil, err
@@ -80,6 +85,9 @@ func (r *VideoRepository) GetROIsByVideoAndCluster(ctx context.Context, videoID 
 
 		if roiUrl.Valid {
 			roi.RoiUrl = roiUrl.String
+		}
+		if clusterName.Valid {
+			roi.ClusterName = clusterName.String
 		}
 		rois = append(rois, roi)
 	}
@@ -89,15 +97,31 @@ func (r *VideoRepository) GetROIsByVideoAndCluster(ctx context.Context, videoID 
 
 // GetROIByID retrieves a single ROI by ID
 func (r *VideoRepository) GetROIByID(ctx context.Context, roiID string) (*models.Roi, error) {
-	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster 
+	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster, cluster_name 
 	          FROM rois WHERE id = $1`
 
 	var roi models.Roi
 	var roiUrl sql.NullString
+	var clusterName sql.NullString
 
 	err := r.DB.QueryRowContext(ctx, query, roiID).Scan(
 		&roi.ID, &roi.FrameID, &roi.FrameIdx, &roi.VideoID,
-		&roi.X1, &roi.Y1, &roi.X2, &roi.Y2, &roiUrl, &roi.Cluster,
+		&roi.X1, &roi.Y1, &roi.X2, &roi.Y2, &roiUrl, &roi.Cluster, &clusterName,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if roiUrl.Valid {
+		roi.RoiUrl = roiUrl.String
+	}
+	if clusterName.Valid {
+		roi.ClusterName = clusterName.String
+	}
+
+	err = r.DB.QueryRowContext(ctx, query, roiID).Scan(
+		&roi.ID, &roi.FrameID, &roi.FrameIdx, &roi.VideoID,
+		&roi.X1, &roi.Y1, &roi.X2, &roi.Y2, &roiUrl, &roi.Cluster, &clusterName,
 	)
 
 	if err == sql.ErrNoRows {
@@ -142,4 +166,11 @@ func (r *VideoRepository) GetClustersByVideo(ctx context.Context, videoID string
 	}
 
 	return clusters, rows.Err()
+}
+
+// UpdateClusterName updates the cluster_name for all ROIs in a specific cluster
+func (r *VideoRepository) UpdateClusterName(ctx context.Context, videoID string, clusterID int, clusterName string) error {
+	query := `UPDATE rois SET cluster_name = $1 WHERE video_id = $2 AND cluster = $3`
+	_, err := r.DB.ExecContext(ctx, query, clusterName, videoID, clusterID)
+	return err
 }

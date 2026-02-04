@@ -9,6 +9,7 @@ export type Roi = {
   y2: number;
   roi_url: string;
   cluster: number;
+  cluster_name: string;
 };
 
 export type ClusterGroup = {

@@ -1,21 +1,26 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
+	"oceanx/backend-go/internal/clients"
 	"oceanx/backend-go/internal/models"
 	"oceanx/backend-go/internal/services"
+	"oceanx/backend-go/internal/websocket"
 
 	"github.com/gin-gonic/gin"
+	ws "github.com/gorilla/websocket"
 )
 
 type VideoHandler struct {
-	Service *services.VideoService
+	Service   *services.VideoService
+	WsManager *websocket.Manager
 }
 
-func NewVideoHandler(service *services.VideoService) *VideoHandler {
-	return &VideoHandler{Service: service}
+func NewVideoHandler(service *services.VideoService, wsManager *websocket.Manager) *VideoHandler {
+	return &VideoHandler{Service: service, WsManager: wsManager}
 }
 
 func (h *VideoHandler) ListVideos(c *gin.Context) {
@@ -98,6 +103,24 @@ func (h *VideoHandler) MarkCompleted(c *gin.Context) {
 	c.JSON(200, gin.H{"status": "ok"})
 }
 
+func (h *VideoHandler) ReceiveProgress(c *gin.Context) {
+	videoID := c.Param("id")
+
+	var event websocket.ProgressEvent
+	if err := c.BindJSON(&event); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	log.Printf("[Progress] Received event for video %s: type=%s, frames=%d, rois=%d\n",
+		videoID, event.Type, event.FramesProcessed, event.ROIsDetected)
+
+	// Broadcast to all WebSocket clients for this video
+	h.BroadcastProgress(videoID, event)
+
+	c.JSON(http.StatusOK, gin.H{"status": "received"})
+}
+
 func (h *VideoHandler) UpdateClusters(c *gin.Context) {
 	id := c.Param("id")
 
@@ -118,6 +141,70 @@ func (h *VideoHandler) UpdateClusters(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "clusters updated"})
+}
+
+type UpdateClusterNameRequest struct {
+	ClusterID   int    `json:"cluster_id"`
+	ClusterName string `json:"cluster_name"`
+}
+
+func (h *VideoHandler) UpdateClusterName(c *gin.Context) {
+	videoID := c.Param("id")
+
+	var req UpdateClusterNameRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	err := h.Service.UpdateClusterName(c.Request.Context(), videoID, req.ClusterID, req.ClusterName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	log.Printf("[ClusterName] Updated cluster %d for video %s to name: %s", req.ClusterID, videoID, req.ClusterName)
+	c.JSON(http.StatusOK, gin.H{"status": "cluster name updated"})
+}
+
+type ReclusterRequest struct {
+	MinClusterSize          int     `json:"min_cluster_size"`
+	MinSamples              *int    `json:"min_samples"`
+	ClusterSelectionEpsilon float64 `json:"cluster_selection_epsilon"`
+	MaxClusterSize          *int    `json:"max_cluster_size"`
+	ClusterSelectionMethod  string  `json:"cluster_selection_method"`
+	PCAComponents           int     `json:"pca_components"`
+}
+
+func (h *VideoHandler) ReclusterVideo(c *gin.Context) {
+	videoID := c.Param("id")
+
+	var req ReclusterRequest
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	// Convert to ClusterParams
+	params := &clients.ClusterParams{
+		MinClusterSize:          req.MinClusterSize,
+		MinSamples:              req.MinSamples,
+		ClusterSelectionEpsilon: req.ClusterSelectionEpsilon,
+		MaxClusterSize:          req.MaxClusterSize,
+		ClusterSelectionMethod:  req.ClusterSelectionMethod,
+		PCAComponents:           req.PCAComponents,
+	}
+
+	log.Printf("[Recluster] Triggering for video %s with params: min_cluster=%d, method=%s\n",
+		videoID, params.MinClusterSize, params.ClusterSelectionMethod)
+
+	// Trigger clustering asynchronously
+	h.Service.TriggerClusteringAsync(videoID, params)
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"status":   "clustering started",
+		"video_id": videoID,
+	})
 }
 
 func (h *VideoHandler) UploadVideo(c *gin.Context) {
@@ -264,4 +351,84 @@ func (h *VideoHandler) GetVideoClusterDashboard(c *gin.Context) {
 		Clusters: clusterGroups,
 		ROIs:     allROIs,
 	})
+}
+
+// GetClusteringSettings retrieves the saved clustering settings for a video
+func (h *VideoHandler) GetClusteringSettings(c *gin.Context) {
+	videoID := c.Param("id")
+
+	settings, err := h.Service.GetClusteringSettings(c.Request.Context(), videoID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to fetch clustering settings",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, settings)
+}
+
+// SaveClusteringSettings saves or updates clustering settings for a video
+func (h *VideoHandler) SaveClusteringSettings(c *gin.Context) {
+	videoID := c.Param("id")
+
+	var req models.ClusteringSettings
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	err := h.Service.SaveClusteringSettings(c.Request.Context(), videoID, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to save clustering settings",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "settings saved"})
+}
+
+var wsUpgrader = ws.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins for now
+	},
+}
+
+func (h *VideoHandler) WebSocketProgress(c *gin.Context) {
+	videoID := c.Param("id")
+
+	conn, err := wsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to upgrade connection"})
+		return
+	}
+
+	client := &websocket.ClientConn{
+		VideoID: videoID,
+		Conn:    conn,
+	}
+
+	h.WsManager.Register(client)
+
+	// Keep connection open and listen for disconnections
+	go func() {
+		defer func() {
+			h.WsManager.Unregister(client)
+		}()
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				break
+			}
+		}
+	}()
+}
+
+// BroadcastProgress sends a progress event to all WebSocket clients for a video
+func (h *VideoHandler) BroadcastProgress(videoID string, event websocket.ProgressEvent) {
+	event.VideoID = videoID
+	h.WsManager.Broadcast(event)
 }

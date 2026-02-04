@@ -11,23 +11,28 @@ import (
 	"oceanx/backend-go/internal/clients"
 	"oceanx/backend-go/internal/models"
 	"oceanx/backend-go/internal/repositories"
+
+	"github.com/google/uuid"
 )
 
 type VideoService struct {
-	Repo       *repositories.VideoRepository
-	MLClient   *clients.MLClient
-	StorageDir string
+	Repo         *repositories.VideoRepository
+	SettingsRepo *repositories.ClusteringSettingsRepository
+	MLClient     *clients.MLClient
+	StorageDir   string
 }
 
 func NewVideoService(
 	repo *repositories.VideoRepository,
+	settingsRepo *repositories.ClusteringSettingsRepository,
 	mlClient *clients.MLClient,
 	storageDir string,
 ) *VideoService {
 	return &VideoService{
-		Repo:       repo,
-		MLClient:   mlClient,
-		StorageDir: storageDir,
+		Repo:         repo,
+		SettingsRepo: settingsRepo,
+		MLClient:     mlClient,
+		StorageDir:   storageDir,
 	}
 }
 
@@ -150,8 +155,8 @@ func (s *VideoService) SaveProcessingResults(
 		return fmt.Errorf("failed to mark video completed: %w", err)
 	}
 
-	// Trigger clustering asynchronously
-	go s.TriggerClusteringAsync(videoID)
+	// Trigger clustering asynchronously with default parameters
+	go s.TriggerClusteringAsync(videoID, nil)
 
 	return nil
 }
@@ -219,18 +224,63 @@ func (s *VideoService) TriggerProcessingAsync(video *models.Video) {
 	}()
 }
 
-func (s *VideoService) TriggerClusteringAsync(videoID string) {
+func (s *VideoService) TriggerClusteringAsync(videoID string, params *clients.ClusterParams) {
 	go func() {
 		ctx := context.Background()
-		fmt.Println("Starting async clustering for video:", videoID)
+		fmt.Printf("[VideoService] Starting async clustering for video: %s\n", videoID)
+		if params != nil {
+			fmt.Printf("[VideoService] Clustering params: min_cluster_size=%d, method=%s, pca=%d\n",
+				params.MinClusterSize, params.ClusterSelectionMethod, params.PCAComponents)
+		} else {
+			fmt.Printf("[VideoService] Using default clustering params\n")
+		}
 
-		err := s.MLClient.ClusterROIs(ctx, videoID)
+		err := s.MLClient.ClusterROIs(ctx, videoID, params)
 		if err != nil {
-			fmt.Printf("Clustering failed for video %s: %v\n", videoID, err)
+			fmt.Printf("[VideoService] Clustering failed for video %s: %v\n", videoID, err)
 			return
 		}
 
-		fmt.Println("Clustering pipeline completed for video:", videoID)
+		fmt.Printf("[VideoService] Clustering pipeline completed for video: %s\n", videoID)
+
+		// Save clustering settings after successful clustering
+		if params != nil {
+			parsedID, err := uuid.Parse(videoID)
+			if err != nil {
+				fmt.Printf("[VideoService] Failed to parse video ID for settings save: %v\n", err)
+				return
+			}
+
+			// Handle min_samples (could be nil)
+			minSamples := 5 // default
+			if params.MinSamples != nil {
+				minSamples = *params.MinSamples
+			}
+
+			// Handle max_cluster_size (could be nil)
+			maxClusterSize := 0 // default (means unlimited)
+			if params.MaxClusterSize != nil {
+				maxClusterSize = *params.MaxClusterSize
+			}
+
+			settings := &models.ClusteringSettings{
+				ID:                      uuid.New(),
+				VideoID:                 parsedID,
+				MinClusterSize:          params.MinClusterSize,
+				MinSamples:              minSamples,
+				ClusterSelectionEpsilon: params.ClusterSelectionEpsilon,
+				ClusterSelectionMethod:  params.ClusterSelectionMethod,
+				PCAComponents:           params.PCAComponents,
+				MaxClusterSize:          maxClusterSize,
+			}
+
+			err = s.SettingsRepo.CreateOrUpdate(ctx, settings)
+			if err != nil {
+				fmt.Printf("[VideoService] Failed to save clustering settings: %v\n", err)
+			} else {
+				fmt.Printf("[VideoService] Clustering settings saved for video: %s\n", videoID)
+			}
+		}
 	}()
 }
 
@@ -263,4 +313,54 @@ func (s *VideoService) GetClustersByVideo(
 	videoID string,
 ) ([]repositories.ClusterInfo, error) {
 	return s.Repo.GetClustersByVideo(ctx, videoID)
+}
+
+func (s *VideoService) UpdateClusterName(
+	ctx context.Context,
+	videoID string,
+	clusterID int,
+	clusterName string,
+) error {
+	return s.Repo.UpdateClusterName(ctx, videoID, clusterID, clusterName)
+}
+
+// GetClusteringSettings retrieves the saved clustering settings for a video
+func (s *VideoService) GetClusteringSettings(
+	ctx context.Context,
+	videoID string,
+) (*models.ClusteringSettings, error) {
+	// Parse videoID to UUID
+	parsedID, err := uuid.Parse(videoID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid video ID: %w", err)
+	}
+
+	// Try to get existing settings
+	settings, err := s.SettingsRepo.GetByVideoID(ctx, parsedID)
+	if err != nil {
+		return nil, err
+	}
+
+	// If no settings exist, return default settings
+	if settings == nil {
+		return models.DefaultClusteringSettings(parsedID), nil
+	}
+
+	return settings, nil
+}
+
+// SaveClusteringSettings saves clustering settings for a video
+func (s *VideoService) SaveClusteringSettings(
+	ctx context.Context,
+	videoID string,
+	settings *models.ClusteringSettings,
+) error {
+	// Parse videoID to UUID
+	parsedID, err := uuid.Parse(videoID)
+	if err != nil {
+		return fmt.Errorf("invalid video ID: %w", err)
+	}
+
+	settings.VideoID = parsedID
+	return s.SettingsRepo.CreateOrUpdate(ctx, settings)
 }
