@@ -353,6 +353,44 @@ func (h *VideoHandler) GetVideoClusterDashboard(c *gin.Context) {
 	})
 }
 
+// GetClusteringSettings retrieves the saved clustering settings for a video
+func (h *VideoHandler) GetClusteringSettings(c *gin.Context) {
+	videoID := c.Param("id")
+
+	settings, err := h.Service.GetClusteringSettings(c.Request.Context(), videoID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to fetch clustering settings",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, settings)
+}
+
+// SaveClusteringSettings saves or updates clustering settings for a video
+func (h *VideoHandler) SaveClusteringSettings(c *gin.Context) {
+	videoID := c.Param("id")
+
+	var req models.ClusteringSettings
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload"})
+		return
+	}
+
+	err := h.Service.SaveClusteringSettings(c.Request.Context(), videoID, &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to save clustering settings",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "settings saved"})
+}
+
 var wsUpgrader = ws.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true // Allow all origins for now

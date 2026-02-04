@@ -34,6 +34,10 @@ func SetupRouter(videoHandler *handlers.VideoHandler) *gin.Engine {
 	r.POST("/videos/:id/progress", videoHandler.ReceiveProgress)
 	r.GET("/videos/:id/dashboard", videoHandler.GetVideoClusterDashboard)
 
+	// Clustering settings endpoints
+	r.GET("/videos/:id/clustering-settings", videoHandler.GetClusteringSettings)
+	r.POST("/videos/:id/clustering-settings", videoHandler.SaveClusteringSettings)
+
 	// WebSocket endpoint for real-time progress
 	r.GET("/ws/videos/:id", videoHandler.WebSocketProgress)
 

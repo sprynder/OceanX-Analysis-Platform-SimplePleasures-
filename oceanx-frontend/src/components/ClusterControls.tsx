@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type ClusterControlsProps = {
   videoId: string;
@@ -28,6 +28,7 @@ export function ClusterControls({
 }: ClusterControlsProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isReclustering, setIsReclustering] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Default values matching backend
@@ -39,6 +40,37 @@ export function ClusterControls({
     cluster_selection_method: "eom",
     pca_components: 50,
   });
+
+  // Load clustering settings when video changes
+  useEffect(() => {
+    if (!videoId) return;
+
+    const loadSettings = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(`${API_BASE}/videos/${videoId}/clustering-settings`);
+        if (response.ok) {
+          const settings = await response.json();
+          console.log("[ClusterControls] Loaded settings:", settings);
+          setParams({
+            min_cluster_size: settings.min_cluster_size || 5,
+            min_samples: settings.min_samples || null,
+            cluster_selection_epsilon: settings.cluster_selection_epsilon || 0.0,
+            max_cluster_size: settings.max_cluster_size || null,
+            cluster_selection_method: settings.cluster_selection_method || "eom",
+            pca_components: settings.pca_components || 50,
+          });
+        }
+      } catch (err) {
+        console.error("[ClusterControls] Error loading settings:", err);
+        // Keep default values on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [videoId]);
 
   const handleRecluster = async () => {
     if (!videoId) return;
@@ -65,6 +97,7 @@ export function ClusterControls({
       const result = await response.json();
       console.log("[Recluster] Response:", result);
 
+      // Settings are automatically saved by backend after clustering completes
       // Wait a moment for clustering to complete
       setTimeout(() => {
         setIsReclustering(false);

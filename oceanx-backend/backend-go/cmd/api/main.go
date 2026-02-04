@@ -30,12 +30,14 @@ func main() {
 	}
 
 	videoRepo := repositories.NewVideoRepository(db)
+	settingsRepo := repositories.NewClusteringSettingsRepository(db)
 	mlClient := clients.NewMLClient(
 		os.Getenv("ML_SERVICE_URL"), // e.g. http://backend-ml:8000
 	)
 
 	videoService := services.NewVideoService(
 		videoRepo,
+		settingsRepo,
 		mlClient,
 		"/data/videos",
 	)

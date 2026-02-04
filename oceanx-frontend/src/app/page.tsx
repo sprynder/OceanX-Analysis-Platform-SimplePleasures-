@@ -109,6 +109,30 @@ export default function Home() {
     return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
   };
 
+  const saveDefaultClusteringSettings = async (videoId: string) => {
+    try {
+      const defaultSettings = {
+        min_cluster_size: 5,
+        min_samples: 5,
+        cluster_selection_epsilon: 0.0,
+        max_cluster_size: 0,
+        cluster_selection_method: "eom",
+        pca_components: 100,
+      };
+
+      await fetch(`${API_BASE}/videos/${videoId}/clustering-settings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(defaultSettings),
+      });
+      console.log("[Settings] Default clustering settings saved for video:", videoId);
+    } catch (err) {
+      console.error("[Settings] Error saving default settings:", err);
+    }
+  };
+
   const handleExportRois = () => {
     if (!dashboard || dashboard.rois.length === 0) return;
 
@@ -206,6 +230,8 @@ export default function Home() {
               onUploadSuccess={(newVideoId) => {
                 setVideoId(newVideoId);
                 setUploadVideoId(newVideoId);
+                // Save default clustering settings for new video
+                saveDefaultClusteringSettings(newVideoId);
                 loadDashboard(newVideoId);
               }}
             />
