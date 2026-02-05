@@ -25,7 +25,7 @@ services:
       - videos:/data/videos
 
   postgres:
-    image: postgres
+    image: postgres:16
     restart: always
     ports:
       - "5432:5432"
@@ -44,6 +44,14 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
   backend-ml:
     build:
       context: ../backend-ml
@@ -57,6 +65,26 @@ services:
       - QDRANT_PORT=6333
       - GATEWAY_API=http://backend-go:8080
       - ROI_DIR=/data/rois
+
+  celery-worker:
+    build:
+      context: ../backend-ml
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - GATEWAY_API=http://backend-go:8080
+      - ROI_DIR=/data/rois
+      - GO_API_URL=http://backend-go:8080
+    volumes:
+      - videos:/data/videos
+      - rois:/data/rois
+    depends_on:
+      - redis
+      - backend-ml
+      - qdrant
+    restart: unless-stopped
 
   frontend:
     build: ../../oceanx-frontend
@@ -72,6 +100,7 @@ services:
 
 volumes:
   qdrant_data:
+  redis_data:
   videos:
   rois:
   pgdata:
