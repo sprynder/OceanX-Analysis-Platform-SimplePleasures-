@@ -33,7 +33,8 @@ def process_video_task(
     self,
     video_id: str,
     video_path: str,
-    every_seconds: float = 0.5
+    every_seconds: float = 0.5,
+    embedding_model: str = "bioclip2"
 ):
     """
     Extract frames from video, detect ROIs, generate embeddings, and store in Qdrant
@@ -76,7 +77,7 @@ def process_video_task(
             for roi in rois:
                 x1, y1, x2, y2 = roi["bbox"]
                 roi_crop = frame.crop((x1, y1, x2, y2))
-                vector = embed(roi_crop)
+                vector = embed(roi_crop, model_name=embedding_model)
 
                 roi_id = str(uuid4())
 

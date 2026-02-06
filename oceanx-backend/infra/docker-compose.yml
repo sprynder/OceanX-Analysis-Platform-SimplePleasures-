@@ -60,11 +60,16 @@ services:
     volumes:
       - videos:/data/videos
       - rois:/data/rois
+      - model_cache:/root/.cache
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - GATEWAY_API=http://backend-go:8080
       - ROI_DIR=/data/rois
+      - TORCH_HOME=/root/.cache/torch
+      - HF_HOME=/root/.cache/huggingface
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface/transformers
+      - TIMM_CACHE_DIR=/root/.cache/timm
 
   celery-worker:
     build:
@@ -77,9 +82,14 @@ services:
       - GATEWAY_API=http://backend-go:8080
       - ROI_DIR=/data/rois
       - GO_API_URL=http://backend-go:8080
+      - TORCH_HOME=/root/.cache/torch
+      - HF_HOME=/root/.cache/huggingface
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface/transformers
+      - TIMM_CACHE_DIR=/root/.cache/timm
     volumes:
       - videos:/data/videos
       - rois:/data/rois
+      - model_cache:/root/.cache
     depends_on:
       - redis
       - backend-ml
@@ -103,4 +113,5 @@ volumes:
   redis_data:
   videos:
   rois:
+  model_cache:
   pgdata:

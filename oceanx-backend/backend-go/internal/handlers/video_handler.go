@@ -216,6 +216,11 @@ func (h *VideoHandler) UploadVideo(c *gin.Context) {
 		return
 	}
 
+	embeddingModel := c.PostForm("embedding_model")
+	if embeddingModel == "" {
+		embeddingModel = "bioclip2"
+	}
+
 	video, err := h.Service.SaveUploadedVideo(
 		c.Request.Context(),
 		file,
@@ -228,7 +233,7 @@ func (h *VideoHandler) UploadVideo(c *gin.Context) {
 	}
 
 	// 🔥 async ML kick-off goes HERE later
-	h.Service.TriggerProcessingAsync(video)
+	h.Service.TriggerProcessingAsync(video, embeddingModel)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"id":        video.ID,

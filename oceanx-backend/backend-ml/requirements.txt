@@ -13,3 +13,4 @@ hdbscan
 scikit-learn
 celery[redis]
 redis
+timm

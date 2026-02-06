@@ -4,6 +4,7 @@ from typing import Dict, List
 class ProcessVideoRequest(BaseModel):
     video_id: str
     video_path: str
+    embedding_model: str = "bioclip2"
 
 
 class ClusterROIsRequest(BaseModel):

@@ -201,9 +201,12 @@ func (s *VideoService) SaveClusterResults(
 	return nil
 }
 
-func (s *VideoService) TriggerProcessingAsync(video *models.Video) {
+func (s *VideoService) TriggerProcessingAsync(video *models.Video, embeddingModel string) {
 	go func() {
 		ctx := context.Background()
+		if embeddingModel == "" {
+			embeddingModel = "bioclip2"
+		}
 
 		// Mark as processing
 		_ = s.Repo.UpdateStatus(ctx, video.ID, "processing")
@@ -212,6 +215,7 @@ func (s *VideoService) TriggerProcessingAsync(video *models.Video) {
 			ctx,
 			video.ID,
 			video.Path,
+			embeddingModel,
 		)
 
 		if err != nil {

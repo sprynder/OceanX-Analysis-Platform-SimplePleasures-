@@ -24,19 +24,22 @@ func NewMLClient(baseURL string) *MLClient {
 }
 
 type ProcessVideoRequest struct {
-	VideoID   string `json:"video_id"`
-	VideoPath string `json:"video_path"`
+	VideoID        string `json:"video_id"`
+	VideoPath      string `json:"video_path"`
+	EmbeddingModel string `json:"embedding_model"`
 }
 
 func (c *MLClient) ProcessVideo(
 	ctx context.Context,
 	videoID string,
 	videoPath string,
+	embeddingModel string,
 ) error {
 
 	payload := ProcessVideoRequest{
-		VideoID:   videoID,
-		VideoPath: videoPath,
+		VideoID:        videoID,
+		VideoPath:      videoPath,
+		EmbeddingModel: embeddingModel,
 	}
 
 	body, _ := json.Marshal(payload)

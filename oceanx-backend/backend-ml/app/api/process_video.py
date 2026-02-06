@@ -10,9 +10,10 @@ router = APIRouter(prefix="/process-video")
 async def process_video(request: ProcessVideoRequest, every_seconds: float = 0.5):
     video_path = request.video_path
     video_id = request.video_id
+    embedding_model = request.embedding_model
 
     if not os.path.exists(video_path):
         raise HTTPException(status_code=404, detail="Video not found")
 
-    task = process_video_task.delay(video_id, video_path, every_seconds)
+    task = process_video_task.delay(video_id, video_path, every_seconds, embedding_model)
     return {"task_id": task.id, "status": "queued"}
