@@ -71,6 +71,7 @@ func (c *MLClient) ProcessVideo(
 }
 
 type ClusterROIsRequest struct {
+	Algorithm               string  `json:"algorithm"`
 	VideoID                 string  `json:"video_id"`
 	MinClusterSize          int     `json:"min_cluster_size"`
 	MinSamples              *int    `json:"min_samples,omitempty"`
@@ -78,15 +79,22 @@ type ClusterROIsRequest struct {
 	MaxClusterSize          *int    `json:"max_cluster_size,omitempty"`
 	ClusterSelectionMethod  string  `json:"cluster_selection_method"`
 	PCAComponents           int     `json:"pca_components"`
+	KMeansK                 int     `json:"kmeans_k"`
+	KMeansSeed              int     `json:"kmeans_seed"`
+	KMeansMaxIter           int     `json:"kmeans_max_iter"`
 }
 
 type ClusterParams struct {
+	Algorithm               string
 	MinClusterSize          int
 	MinSamples              *int
 	ClusterSelectionEpsilon float64
 	MaxClusterSize          *int
 	ClusterSelectionMethod  string
 	PCAComponents           int
+	KMeansK                 int
+	KMeansSeed              int
+	KMeansMaxIter           int
 }
 
 func (c *MLClient) ClusterROIs(
@@ -98,16 +106,21 @@ func (c *MLClient) ClusterROIs(
 	// Use defaults if no params provided
 	if params == nil {
 		params = &ClusterParams{
+			Algorithm:               "hdbscan",
 			MinClusterSize:          5,
 			MinSamples:              nil,
 			ClusterSelectionEpsilon: 0.0,
 			MaxClusterSize:          nil,
 			ClusterSelectionMethod:  "eom",
 			PCAComponents:           50,
+			KMeansK:                 8,
+			KMeansSeed:              42,
+			KMeansMaxIter:           20,
 		}
 	}
 
 	payload := ClusterROIsRequest{
+		Algorithm:               params.Algorithm,
 		VideoID:                 videoID,
 		MinClusterSize:          params.MinClusterSize,
 		MinSamples:              params.MinSamples,
@@ -115,6 +128,9 @@ func (c *MLClient) ClusterROIs(
 		MaxClusterSize:          params.MaxClusterSize,
 		ClusterSelectionMethod:  params.ClusterSelectionMethod,
 		PCAComponents:           params.PCAComponents,
+		KMeansK:                 params.KMeansK,
+		KMeansSeed:              params.KMeansSeed,
+		KMeansMaxIter:           params.KMeansMaxIter,
 	}
 
 	body, _ := json.Marshal(payload)

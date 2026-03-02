@@ -168,12 +168,16 @@ func (h *VideoHandler) UpdateClusterName(c *gin.Context) {
 }
 
 type ReclusterRequest struct {
+	Algorithm               string  `json:"algorithm"`
 	MinClusterSize          int     `json:"min_cluster_size"`
 	MinSamples              *int    `json:"min_samples"`
 	ClusterSelectionEpsilon float64 `json:"cluster_selection_epsilon"`
 	MaxClusterSize          *int    `json:"max_cluster_size"`
 	ClusterSelectionMethod  string  `json:"cluster_selection_method"`
 	PCAComponents           int     `json:"pca_components"`
+	KMeansK                 int     `json:"kmeans_k"`
+	KMeansSeed              int     `json:"kmeans_seed"`
+	KMeansMaxIter           int     `json:"kmeans_max_iter"`
 }
 
 func (h *VideoHandler) ReclusterVideo(c *gin.Context) {
@@ -185,14 +189,28 @@ func (h *VideoHandler) ReclusterVideo(c *gin.Context) {
 		return
 	}
 
+	if req.Algorithm == "" {
+		req.Algorithm = "hdbscan"
+	}
+	if req.KMeansK == 0 {
+		req.KMeansK = 8
+	}
+	if req.KMeansMaxIter == 0 {
+		req.KMeansMaxIter = 20
+	}
+
 	// Convert to ClusterParams
 	params := &clients.ClusterParams{
+		Algorithm:               req.Algorithm,
 		MinClusterSize:          req.MinClusterSize,
 		MinSamples:              req.MinSamples,
 		ClusterSelectionEpsilon: req.ClusterSelectionEpsilon,
 		MaxClusterSize:          req.MaxClusterSize,
 		ClusterSelectionMethod:  req.ClusterSelectionMethod,
 		PCAComponents:           req.PCAComponents,
+		KMeansK:                 req.KMeansK,
+		KMeansSeed:              req.KMeansSeed,
+		KMeansMaxIter:           req.KMeansMaxIter,
 	}
 
 	log.Printf("[Recluster] Triggering for video %s with params: min_cluster=%d, method=%s\n",

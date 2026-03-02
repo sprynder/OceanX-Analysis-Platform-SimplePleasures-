@@ -14,3 +14,4 @@ scikit-learn
 celery[redis]
 redis
 timm
+pyspark==3.5.2

@@ -16,12 +16,16 @@ async def cluster_rois(request: ClusterROIsRequest):
     """
     task = cluster_rois_task.delay(
         request.video_id,
+        request.algorithm,
         request.min_cluster_size,
         request.min_samples,
         request.cluster_selection_epsilon,
         request.max_cluster_size,
         request.cluster_selection_method,
         request.pca_components,
+        request.kmeans_k,
+        request.kmeans_seed,
+        request.kmeans_max_iter,
     )
 
     return {"task_id": task.id, "status": "queued"}
