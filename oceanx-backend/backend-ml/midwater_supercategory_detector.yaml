@@ -1,0 +1,25 @@
+train: /data/james/final_split/midwater/images/train
+val: /data/james/final_split/midwater/images/val
+test: /data/james/final_split/midwater/images/test
+names:
+  0: Bony fishes
+  1: Eel-like
+  2: Sharks
+  3: Rays and Skates
+  4: Cephalopods
+  5: Pteropods
+  6: Shrimps
+  7: Amphipod-like
+  8: Isopods
+  9: Hydroidolina
+  10: Trachylinae
+  11: Scyphozoa
+  12: Calycophorae
+  13: Physonectae
+  14: Lobata-like
+  15: Beroidae
+  16: Appendicularia
+  17: Pyrosome
+  18: Salps
+  19: Worm-like
+  20: Arrow Worms 

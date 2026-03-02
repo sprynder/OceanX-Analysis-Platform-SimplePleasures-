@@ -14,3 +14,4 @@ scikit-learn
 celery[redis]
 redis
 timm
+confluent-kafka

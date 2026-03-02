@@ -1,0 +1,33 @@
+train: /data/james/reduced_experiment/data6/images/train
+val: /data/james/reduced_experiment/data6/images/val
+test: /data/james/reduced_experiment/data6/images/test
+names:
+  0: Sea Anemones
+  1: Bony fishes
+  2: Flatfish
+  3: Eels
+  4: Gastropods
+  5: Sharks
+  6: Rays and Skates
+  7: Chimaeras
+  8: Sea stars
+  9: Feather stars and sea lilies
+  10: Sea cucumbers
+  11: Urchins
+  12: Glass sponges
+  13: Sea fans
+  14: Soft corals
+  15: Sea pens
+  16: Stony corals
+  17: Black corals
+  18: Crabs
+  19: Shrimps
+  20: Squat lobsters
+  21: Barnacles
+  22: Sea spiders
+  23: Worms
+  24: Brittle Stars
+  25: Tube-Dwelling Anemones
+  26: Demosponges 
+  27: Zoanthids
+  28: Clams
