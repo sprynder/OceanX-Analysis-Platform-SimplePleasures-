@@ -8,9 +8,9 @@ type ClusterCardProps = {
   onNameUpdate?: (clusterId: number, clusterName: string) => void;
 };
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
-  "http://localhost:8080";
+// const API_BASE =
+//   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
+//   "http://localhost:8080";
 
 export function ClusterCard({ cluster, videoId, onNameUpdate }: ClusterCardProps) {
   const sortedRois = [...cluster.rois].sort(
@@ -37,7 +37,7 @@ export function ClusterCard({ cluster, videoId, onNameUpdate }: ClusterCardProps
 
     setIsSaving(true);
     try {
-      const response = await fetch(`${API_BASE}/videos/${videoId}/clusters/name`, {
+      const response = await fetch(`/videos/${videoId}/clusters/name`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

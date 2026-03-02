@@ -17,10 +17,6 @@ type ClusterParams = {
   pca_components: number;
 };
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
-  "http://localhost:8080";
-
 export function ClusterControls({
   videoId,
   onReclusterStart,
@@ -48,7 +44,8 @@ export function ClusterControls({
     const loadSettings = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`${API_BASE}/videos/${videoId}/clustering-settings`);
+        const response = await fetch(`/videos/${videoId}/clustering-settings`);
+        // const response = await fetch(`${API_BASE}/videos/${videoId}/clustering-settings`);
         if (response.ok) {
           const settings = await response.json();
           console.log("[ClusterControls] Loaded settings:", settings);
@@ -81,8 +78,8 @@ export function ClusterControls({
 
     try {
       console.log("[Recluster] Sending request with params:", params);
-      
-      const response = await fetch(`${API_BASE}/videos/${videoId}/recluster`, {
+      const response = await fetch(`/videos/${videoId}/recluster`, {
+      // const response = await fetch(`${API_BASE}/videos/${videoId}/recluster`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

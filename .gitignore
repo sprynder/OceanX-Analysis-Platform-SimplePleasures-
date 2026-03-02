@@ -6,4 +6,19 @@
 /oceanx-backend/backend-ml/models
 /oceanx-backend/backend-ml/__pycache__
 
-
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+/oceanx
+# Windows
+Thumbs.db
+# Mac
+.DS_Store
+# Node
+node_modules/
+# Build
+dist/
+build/

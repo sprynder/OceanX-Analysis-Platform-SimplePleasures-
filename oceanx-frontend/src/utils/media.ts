@@ -2,8 +2,9 @@ export const toMediaUrl = (input?: string | null): string => {
   if (!input) return "";
   const normalized = input.replace(/\\/g, "/");
   // Convert backend paths to nginx media URLs (absolute URLs through nginx)
-  const mediaBase =
-    process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") || "http://localhost";
+  // const mediaBase =
+  //   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") || "http://localhost";
+  const mediaBase = "";
   if (normalized.startsWith("/data/videos/")) {
     return `${mediaBase}/media/videos/${normalized.replace("/data/videos/", "")}`;
   }

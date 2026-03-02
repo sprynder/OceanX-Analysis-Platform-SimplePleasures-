@@ -70,7 +70,8 @@ export function VideoUpload({ onUploadSuccess }: VideoUploadProps) {
         setUploading(false);
       });
 
-      xhr.open('POST', 'http://localhost/videos');
+      // xhr.open('POST', 'http://localhost/videos');
+      xhr.open('POST', '/videos');
       xhr.send(formData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');

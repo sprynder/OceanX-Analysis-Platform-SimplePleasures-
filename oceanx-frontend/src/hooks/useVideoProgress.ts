@@ -23,14 +23,16 @@ export function useVideoProgress(videoId: string | null) {
       return;
     }
 
-    // Construct WebSocket URL from API_BASE (same as other API calls)
-    const apiBase = process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, '') || 'http://localhost:8080';
+    // // Construct WebSocket URL from API_BASE (same as other API calls)
+    // const apiBase = process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, '') || 'http://localhost:8080';
     
-    // Parse the URL to get protocol and host
-    const url = new URL(apiBase);
-    const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = url.host; // localhost:8080
-    const wsUrl = `${protocol}//${host}/ws/videos/${videoId}`;
+    // // Parse the URL to get protocol and host
+    // const url = new URL(apiBase);
+    // const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    // const host = url.host; // localhost:8080
+    // const wsUrl = `${protocol}//${host}/ws/videos/${videoId}`;
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws/videos/${videoId}`;
 
     console.log('[WS] Connecting to:', wsUrl);
 

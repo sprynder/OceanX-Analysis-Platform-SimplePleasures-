@@ -5,6 +5,7 @@ This document describes the ROI (Region of Interest) CRUD endpoints in the Ocean
 ## Overview
 
 The ROI API allows you to:
+
 - List all ROIs for a video
 - Filter ROIs by cluster
 - Retrieve individual ROI details
@@ -19,10 +20,12 @@ The ROI API allows you to:
 **Description:** Retrieve all ROIs for a specific video
 
 **Parameters:**
+
 - `id` (path parameter, required): Video ID
 - `cluster` (query parameter, optional): Cluster ID to filter ROIs
 
-**Response:** 
+**Response:**
+
 ```json
 {
   "video_id": "uuid",
@@ -47,11 +50,13 @@ The ROI API allows you to:
 **Examples:**
 
 Get all ROIs for a video:
+
 ```bash
 curl http://localhost:8080/videos/abc-123/rois
 ```
 
 Get ROIs filtered by cluster:
+
 ```bash
 curl http://localhost:8080/videos/abc-123/rois?cluster=2
 ```
@@ -65,9 +70,11 @@ curl http://localhost:8080/videos/abc-123/rois?cluster=2
 **Description:** Retrieve details of a single ROI by ID
 
 **Parameters:**
+
 - `roi_id` (path parameter, required): ROI ID
 
 **Response:**
+
 ```json
 {
   "id": "uuid",
@@ -84,6 +91,7 @@ curl http://localhost:8080/videos/abc-123/rois?cluster=2
 ```
 
 **Example:**
+
 ```bash
 curl http://localhost:8080/rois/roi-uuid-123
 ```
@@ -97,9 +105,11 @@ curl http://localhost:8080/rois/roi-uuid-123
 **Description:** Retrieve all ROIs grouped by cluster for dashboard display
 
 **Parameters:**
+
 - `id` (path parameter, required): Video ID
 
 **Response:**
+
 ```json
 {
   "video_id": "abc-123",
@@ -145,6 +155,7 @@ curl http://localhost:8080/rois/roi-uuid-123
 ```
 
 **Example:**
+
 ```bash
 curl http://localhost:8080/videos/abc-123/dashboard
 ```
@@ -154,6 +165,7 @@ curl http://localhost:8080/videos/abc-123/dashboard
 ## Complete API Flow
 
 ### 1. Upload Video
+
 ```bash
 curl -X POST -F "file=@video.mp4" http://localhost:8080/videos
 ```
@@ -161,16 +173,19 @@ curl -X POST -F "file=@video.mp4" http://localhost:8080/videos
 Response includes `video_id`.
 
 ### 2. Video Processing (Async)
+
 - ML backend processes video and extracts ROIs
 - ROIs are detected, embedded, and images saved to `/data/rois/{video_id}/{roi_id}.jpg`
 - Results posted to `/videos/{video_id}/complete`
 
 ### 3. Clustering (Async)
+
 - ML backend clusters ROI embeddings using HDBSCAN
 - Results posted to `/videos/{video_id}/clusters`
-- ROI cluster assignments stored in database
+- ROI cluster assignments /stored in database
 
 ### 4. Query ROIs (Your Dashboard)
+
 ```bash
 # Get all ROIs
 curl http://localhost:8080/videos/abc-123/rois
@@ -208,6 +223,7 @@ CREATE TABLE rois (
 ## Storage
 
 ROI images are stored on disk at:
+
 ```
 /data/rois/{video_id}/{roi_id}.jpg
 ```

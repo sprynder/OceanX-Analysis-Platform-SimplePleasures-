@@ -17,7 +17,7 @@ export function VideoList({ onSelectVideo }: VideoListProps) {
     const fetchVideos = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost/videos');
+        const response = await fetch('/videos');
         if (!response.ok) {
           throw new Error(`Failed to fetch videos: ${response.statusText}`);
         }
