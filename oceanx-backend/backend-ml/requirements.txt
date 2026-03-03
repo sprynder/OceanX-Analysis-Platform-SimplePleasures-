@@ -11,3 +11,6 @@ torchvision
 open-clip-torch
 hdbscan
 scikit-learn
+celery[redis]
+redis
+timm

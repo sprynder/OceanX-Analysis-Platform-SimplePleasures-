@@ -11,6 +11,9 @@ export function VideoUpload({ onUploadSuccess }: VideoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
+  const [embeddingModel, setEmbeddingModel] = useState<'bioclip2' | 'dinov3'>(
+    'bioclip2'
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -32,6 +35,7 @@ export function VideoUpload({ onUploadSuccess }: VideoUploadProps) {
 
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('embedding_model', embeddingModel);
 
       const xhr = new XMLHttpRequest();
 
@@ -95,6 +99,22 @@ export function VideoUpload({ onUploadSuccess }: VideoUploadProps) {
             hover:file:bg-blue-100
             disabled:opacity-50"
         />
+      </div>
+
+      <div>
+        <label htmlFor="embedding-model" className="block text-sm font-medium text-gray-700 mb-2">
+          Embedding Model
+        </label>
+        <select
+          id="embedding-model"
+          value={embeddingModel}
+          onChange={(e) => setEmbeddingModel(e.target.value as 'bioclip2' | 'dinov3')}
+          disabled={uploading}
+          className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+        >
+          <option value="bioclip2">BioCLIP2 (default)</option>
+          <option value="dinov3">DINOv3 (timm)</option>
+        </select>
       </div>
 
       {file && (
