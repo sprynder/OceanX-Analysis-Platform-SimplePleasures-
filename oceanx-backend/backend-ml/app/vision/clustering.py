@@ -1,5 +1,7 @@
 # backend-ml/app/vision/clustering.py
 import numpy as np
+import os
+import socket
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans as SklearnKMeans
 import hdbscan
@@ -137,6 +139,36 @@ def _cluster_embeddings_spark_kmeans(
             '-Dcom.github.fommil.netlib.LAPACK=com.github.fommil.netlib.F2jLAPACK'
         )
 
+        is_cluster_mode = isinstance(spark_master, str) and spark_master.startswith('spark://')
+        driver_host = os.getenv('SPARK_DRIVER_HOST')
+        driver_bind_address = os.getenv('SPARK_DRIVER_BIND_ADDRESS')
+
+        if is_cluster_mode:
+            if not driver_host:
+                try:
+                    driver_host = socket.gethostbyname(socket.gethostname())
+                except OSError:
+                    driver_host = socket.gethostname()
+            if not driver_bind_address:
+                driver_bind_address = '0.0.0.0'
+        else:
+            if not driver_host:
+                driver_host = '127.0.0.1'
+            if not driver_bind_address:
+                driver_bind_address = '127.0.0.1'
+
+        print(
+            f'[SparkKMeans] Driver network config host={driver_host}, bindAddress={driver_bind_address}',
+            flush=True,
+        )
+
+        pyspark_python = os.getenv('PYSPARK_PYTHON', 'python3')
+        pyspark_driver_python = os.getenv('PYSPARK_DRIVER_PYTHON', pyspark_python)
+        print(
+            f'[SparkKMeans] Python config driver={pyspark_driver_python}, executor={pyspark_python}',
+            flush=True,
+        )
+
         spark = (
             SparkSession.builder
             .master(spark_master)
@@ -144,8 +176,11 @@ def _cluster_embeddings_spark_kmeans(
             .config('spark.ui.enabled', 'false')
             .config('spark.ui.showConsoleProgress', 'false')
             .config('spark.port.maxRetries', '64')
-            .config('spark.driver.host', '127.0.0.1')
-            .config('spark.driver.bindAddress', '127.0.0.1')
+            .config('spark.driver.host', driver_host)
+            .config('spark.driver.bindAddress', driver_bind_address)
+            .config('spark.pyspark.driver.python', pyspark_driver_python)
+            .config('spark.pyspark.python', pyspark_python)
+            .config('spark.executorEnv.PYSPARK_PYTHON', pyspark_python)
             .config('spark.python.use.daemon', 'true')
             .config('spark.python.worker.reuse', 'true')
             .config('spark.python.worker.faulthandler.enabled', 'true')

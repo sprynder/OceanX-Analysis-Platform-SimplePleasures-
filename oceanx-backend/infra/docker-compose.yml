@@ -14,16 +14,6 @@ services:
         - backend-go
         - frontend
 
-  backend-go:
-    build: ../backend-go
-    ports: ["8080:8080"]
-    depends_on: [postgres, backend-ml]
-    environment:
-      - DATABASE_URL=postgres://oceanx:oceanx@postgres:5432/oceanx?sslmode=disable
-      - ML_SERVICE_URL=http://backend-ml:8000
-    volumes:
-      - videos:/data/videos
-
   postgres:
     image: postgres:16
     restart: always
@@ -51,6 +41,56 @@ services:
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
+  backend-go:
+    build: ../backend-go
+    ports: ["8080:8080"]
+    depends_on: [postgres, backend-ml]
+    environment:
+      - DATABASE_URL=postgres://oceanx:oceanx@postgres:5432/oceanx?sslmode=disable
+      - ML_SERVICE_URL=http://backend-ml:8000
+    volumes:
+      - videos:/data/videos
+  spark-master:
+    build:
+      context: ./spark
+    image: oceanx-spark:4.1.1-py311-java17
+    container_name: spark-master
+    hostname: spark-master
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+      - PYSPARK_PYTHON=/opt/conda/bin/python
+      - PYSPARK_DRIVER_PYTHON=/opt/conda/bin/python
+    ports:
+      - '8082:8080' # Master Web UI
+      - '7077:7077' # Master Port
+    volumes:
+      - ./spark-apps:/opt/spark-apps
+      - ./spark-data:/opt/spark-data
+    networks:
+      - spark-net
+
+  spark-worker:
+    image: oceanx-spark:4.1.1-py311-java17
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    environment:
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+      - SPARK_WORKER_WEBUI_PORT=8081
+      - PYSPARK_PYTHON=/opt/conda/bin/python
+      - PYSPARK_DRIVER_PYTHON=/opt/conda/bin/python
+    expose:
+      - '8081'
+    depends_on:
+      - spark-master
+    volumes:
+      - ./spark-apps:/opt/spark-apps
+      - ./spark-data:/opt/spark-data
+    networks:
+      - spark-net
 
   backend-ml:
     build:
@@ -67,14 +107,19 @@ services:
       - GATEWAY_API=http://backend-go:8080
       - ROI_DIR=/data/rois
       - KMEANS_USE_SPARK=true
-      - SPARK_MASTER=local[*]
+      - SPARK_MASTER=spark://spark-master:7077
       - SPARK_APP_NAME=oceanx-clustering-kmeans
-      - PYSPARK_PYTHON=/usr/local/bin/python
-      - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python
+      - SPARK_DRIVER_HOST=backend-ml
+      - SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
+      - PYSPARK_PYTHON=/opt/conda/bin/python
+      - PYSPARK_DRIVER_PYTHON=python3
       - TORCH_HOME=/root/.cache/torch
       - HF_HOME=/root/.cache/huggingface
       - TRANSFORMERS_CACHE=/root/.cache/huggingface/transformers
       - TIMM_CACHE_DIR=/root/.cache/timm
+    networks:
+      - default
+      - spark-net
 
   celery-worker:
     build:
@@ -88,10 +133,12 @@ services:
       - ROI_DIR=/data/rois
       - GO_API_URL=http://backend-go:8080
       - KMEANS_USE_SPARK=true
-      - SPARK_MASTER=local[*]
+      - SPARK_MASTER=spark://spark-master:7077
       - SPARK_APP_NAME=oceanx-clustering-kmeans
-      - PYSPARK_PYTHON=/usr/local/bin/python
-      - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python
+      - SPARK_DRIVER_HOST=celery-worker
+      - SPARK_DRIVER_BIND_ADDRESS=0.0.0.0
+      - PYSPARK_PYTHON=/opt/conda/bin/python
+      - PYSPARK_DRIVER_PYTHON=python3
       - TORCH_HOME=/root/.cache/torch
       - HF_HOME=/root/.cache/huggingface
       - TRANSFORMERS_CACHE=/root/.cache/huggingface/transformers
@@ -105,6 +152,9 @@ services:
       - backend-ml
       - qdrant
     restart: unless-stopped
+    networks:
+      - default
+      - spark-net
 
   frontend:
     build: ../../oceanx-frontend
@@ -125,3 +175,8 @@ volumes:
   rois:
   model_cache:
   pgdata:
+
+networks:
+  spark-net:
+    external: true
+    name: spark-net
