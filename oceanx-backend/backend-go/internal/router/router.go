@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(videoHandler *handlers.VideoHandler) *gin.Engine {
+func SetupRouter(videoHandler *handlers.VideoHandler, ingestionHandler *handlers.IngestionHandler) *gin.Engine {
 	r := gin.Default()
 
 	// CORS middleware
@@ -44,6 +44,9 @@ func SetupRouter(videoHandler *handlers.VideoHandler) *gin.Engine {
 	// ROI endpoints
 	r.GET("/videos/:id/rois", videoHandler.ListROIs)
 	r.GET("/rois/:roi_id", videoHandler.GetROI)
+
+	// OpenRVDAS ingestion endpoints
+	r.POST("/rvdas/ingest", ingestionHandler.UploadTelemetryFiles)
 
 	return r
 }

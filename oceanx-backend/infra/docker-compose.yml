@@ -21,8 +21,10 @@ services:
     environment:
       - DATABASE_URL=postgres://oceanx:oceanx@postgres:5432/oceanx?sslmode=disable
       - ML_SERVICE_URL=http://backend-ml:8000
+      - RVDAS_INGEST_DIR=/data/rvdas
     volumes:
       - videos:/data/videos
+      - rvdas_ingestion:/data/rvdas
 
   postgres:
     image: postgres:16
@@ -113,5 +115,6 @@ volumes:
   redis_data:
   videos:
   rois:
+  rvdas_ingestion:
   model_cache:
   pgdata:

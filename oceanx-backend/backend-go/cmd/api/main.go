@@ -41,14 +41,23 @@ func main() {
 		mlClient,
 		"/data/videos",
 	)
+	ingestionService := services.NewIngestionService(getenv("RVDAS_INGEST_DIR", "/data/rvdas"))
 
 	// Initialize WebSocket manager
 	wsManager := websocket.NewManager()
 	wsManager.Start()
 
 	videoHandler := handlers.NewVideoHandler(videoService, wsManager)
+	ingestionHandler := handlers.NewIngestionHandler(ingestionService)
 
-	r := router.SetupRouter(videoHandler)
+	r := router.SetupRouter(videoHandler, ingestionHandler)
 
 	r.Run(":8080")
+}
+
+func getenv(key string, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
 }

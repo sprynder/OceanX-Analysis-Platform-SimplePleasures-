@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Video, DashboardResponse } from "@/types";
 import { VideoMetadata } from "@/components/VideoMetadata";
@@ -185,14 +186,22 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-        <header className="flex flex-col gap-2">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-            OceanX
-          </p>
-          <h1 className="text-3xl font-semibold">Video ROI Dashboard</h1>
-          <p className="text-slate-600">
-            Barebones UI to validate frontend ↔ backend requests.
-          </p>
+        <header className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+              OceanX
+            </p>
+            <h1 className="text-3xl font-semibold">Video ROI Dashboard</h1>
+            <p className="text-slate-600">
+              Barebones UI to validate frontend ↔ backend requests.
+            </p>
+          </div>
+          <Link
+            href="/rvdas"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            OpenRVDAS Interface
+          </Link>
         </header>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
