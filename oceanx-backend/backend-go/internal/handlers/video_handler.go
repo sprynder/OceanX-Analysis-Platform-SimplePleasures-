@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"oceanx/backend-go/internal/clients"
 	"oceanx/backend-go/internal/models"
 	"oceanx/backend-go/internal/services"
 
@@ -264,4 +265,73 @@ func (h *VideoHandler) GetVideoClusterDashboard(c *gin.Context) {
 		Clusters: clusterGroups,
 		ROIs:     allROIs,
 	})
+}
+
+func (h *VideoHandler) SearchROIs(c *gin.Context) {
+	videoID := c.Param("id")
+	h.runSearch(c, &videoID)
+}
+
+func (h *VideoHandler) GlobalSearch(c *gin.Context) {
+	h.runSearch(c, nil)
+}
+
+// runSearch is shared by per-video and cross-video search.
+func (h *VideoHandler) runSearch(c *gin.Context, videoID *string) {
+	var body struct {
+		Query        string  `json:"query"`
+		TopK         int     `json:"top_k"`
+		DedupEnabled *bool   `json:"dedup_enabled"`
+		TauTime      float64 `json:"tau_time"`
+		TauIoU       float64 `json:"tau_iou"`
+		TauEmb       float64 `json:"tau_emb"`
+	}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	// Defaults
+	if body.TopK == 0 {
+		body.TopK = 10
+	}
+	if body.TauTime == 0 {
+		body.TauTime = 2.0
+	}
+	if body.TauIoU == 0 {
+		body.TauIoU = 0.3
+	}
+	if body.TauEmb == 0 {
+		body.TauEmb = 0.85
+	}
+	dedupEnabled := true
+	if body.DedupEnabled != nil {
+		dedupEnabled = *body.DedupEnabled
+	}
+
+	results, err := h.Service.MLClient.SearchROIs(c.Request.Context(), clients.MLSearchRequest{
+		VideoID:      videoID,
+		Query:        body.Query,
+		TopK:         body.TopK,
+		DedupEnabled: dedupEnabled,
+		TauTime:      body.TauTime,
+		TauIoU:       body.TauIoU,
+		TauEmb:       body.TauEmb,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, results)
+}
+
+func (h *VideoHandler) GlobalUMAP(c *gin.Context) {
+	result, err := h.Service.MLClient.GlobalUMAP(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
 }

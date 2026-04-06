@@ -18,7 +18,7 @@ func NewMLClient(baseURL string) *MLClient {
 	return &MLClient{
 		BaseURL: baseURL,
 		Client: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 60 * time.Second, // BioCLIP inference can be slow on CPU
 		},
 	}
 }
@@ -111,4 +111,103 @@ func (c *MLClient) ClusterROIs(
 
 	fmt.Println("Clustering completed for video:", videoID)
 	return nil
+}
+
+// --- Search ---
+
+type MLSearchRequest struct {
+	VideoID      *string `json:"video_id"`       // nil = search all videos
+	Query        string  `json:"query"`
+	TopK         int     `json:"top_k"`
+	DedupEnabled bool    `json:"dedup_enabled"`
+	TauTime      float64 `json:"tau_time"`
+	TauIoU       float64 `json:"tau_iou"`
+	TauEmb       float64 `json:"tau_emb"`
+}
+
+type MLSearchROIResult struct {
+	ROIID        string    `json:"roi_id"`
+	Score        float64   `json:"score"`
+	TimestampSec float64   `json:"timestamp_sec"`
+	BBox         []float64 `json:"bbox"`
+	FrameIdx     int       `json:"frame_idx"`
+	ROIUrl       string    `json:"roi_url"`
+	VideoID      string    `json:"video_id"`
+}
+
+type MLSearchResponse struct {
+	VideoID  *string             `json:"video_id"`
+	Results  []MLSearchROIResult `json:"results"`
+	RawCount int                 `json:"raw_count"`
+}
+
+// --- Global UMAP ---
+
+type MLGlobalROI struct {
+	ROIID    string  `json:"roi_id"`
+	VideoID  string  `json:"video_id"`
+	FrameIdx int     `json:"frame_idx"`
+	ROIUrl   string  `json:"roi_url"`
+	UmapX    float64 `json:"umap_x"`
+	UmapY    float64 `json:"umap_y"`
+	UmapZ    float64 `json:"umap_z"`
+	Cluster  int     `json:"cluster"`
+}
+
+type MLGlobalUMAPResponse struct {
+	ROIs       []MLGlobalROI `json:"rois"`
+	VideoCount int           `json:"video_count"`
+	ROICount   int           `json:"roi_count"`
+}
+
+func (c *MLClient) SearchROIs(ctx context.Context, req MLSearchRequest) (*MLSearchResponse, error) {
+	body, _ := json.Marshal(req)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/search-rois", bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.Client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("ML search service returned %d", resp.StatusCode)
+	}
+
+	var result MLSearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (c *MLClient) GlobalUMAP(ctx context.Context) (*MLGlobalUMAPResponse, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/global-umap", bytes.NewBuffer([]byte("{}")))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.Client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("ML global-umap service returned %d", resp.StatusCode)
+	}
+
+	var result MLGlobalUMAPResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
 }

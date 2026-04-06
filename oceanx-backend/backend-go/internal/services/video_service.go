@@ -178,21 +178,9 @@ func (s *VideoService) SaveClusterResults(
 	videoID string,
 	update *models.ROIClusterUpdate,
 ) error {
-	// Convert to the format expected by the repository
-	roiClusters := make([]struct {
-		RoiID     string
-		ClusterID int
-	}, len(update.ROIClusters))
-
-	for i, rc := range update.ROIClusters {
-		roiClusters[i].RoiID = rc.RoiID
-		roiClusters[i].ClusterID = rc.ClusterID
-	}
-
-	if err := s.Repo.UpdateROIClusters(ctx, roiClusters); err != nil {
+	if err := s.Repo.UpdateROIClusters(ctx, update.ROIClusters); err != nil {
 		return fmt.Errorf("failed to update ROI clusters: %w", err)
 	}
-
 	return nil
 }
 

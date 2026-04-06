@@ -25,7 +25,7 @@ services:
       - videos:/data/videos
 
   postgres:
-    image: postgres
+    image: postgres:16
     restart: always
     ports:
       - "5432:5432"
@@ -52,11 +52,14 @@ services:
     volumes:
       - videos:/data/videos
       - rois:/data/rois
+      # Mount app source so Python changes are picked up without rebuild
+      - ../backend-ml/app:/app/app
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - GATEWAY_API=http://backend-go:8080
       - ROI_DIR=/data/rois
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
     build: ../../oceanx-frontend
@@ -69,6 +72,9 @@ services:
     volumes:
       - videos:/data/videos
       - rois:/data/rois
+      # Mount src so Next.js dev server hot-reloads on file changes
+      - ../../oceanx-frontend/src:/app/src
+      - ../../oceanx-frontend/public:/app/public
 
 volumes:
   qdrant_data:

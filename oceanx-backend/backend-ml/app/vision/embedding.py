@@ -15,3 +15,12 @@ def embed(image):
         feat = feat / feat.norm(dim=-1, keepdim=True)
 
     return feat.squeeze(0).cpu().numpy()
+
+
+def embed_text(text: str):
+    with torch.no_grad():
+        tokens = tokenizer([text]).to(DEVICE)   # default context_length=77
+        feat = clip_model.encode_text(tokens)
+        feat = feat / feat.norm(dim=-1, keepdim=True)              # L2 normalize
+
+    return feat.squeeze(0).cpu().numpy()

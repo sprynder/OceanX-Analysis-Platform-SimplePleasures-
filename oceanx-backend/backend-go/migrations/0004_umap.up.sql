@@ -1,0 +1,4 @@
+ALTER TABLE rois
+    ADD COLUMN umap_x FLOAT8,
+    ADD COLUMN umap_y FLOAT8,
+    ADD COLUMN umap_z FLOAT8;

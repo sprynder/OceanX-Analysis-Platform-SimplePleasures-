@@ -5,9 +5,10 @@ import { Video } from '@/types';
 
 interface VideoListProps {
   onSelectVideo: (videoId: string) => void;
+  apiBase: string;
 }
 
-export function VideoList({ onSelectVideo }: VideoListProps) {
+export function VideoList({ onSelectVideo, apiBase }: VideoListProps) {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +18,7 @@ export function VideoList({ onSelectVideo }: VideoListProps) {
     const fetchVideos = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost/videos');
+        const response = await fetch(`${apiBase}/videos`);
         if (!response.ok) {
           throw new Error(`Failed to fetch videos: ${response.statusText}`);
         }

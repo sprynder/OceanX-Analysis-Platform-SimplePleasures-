@@ -35,5 +35,12 @@ func SetupRouter(videoHandler *handlers.VideoHandler) *gin.Engine {
 	r.GET("/videos/:id/dashboard", videoHandler.GetVideoClusterDashboard)
 	r.GET("/rois/:roi_id", videoHandler.GetROI)
 
+	// Per-video search
+	r.POST("/videos/:id/search", videoHandler.SearchROIs)
+
+	// Global (cross-video) endpoints
+	r.POST("/global/search", videoHandler.GlobalSearch)
+	r.POST("/global/umap", videoHandler.GlobalUMAP)
+
 	return r
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Video, DashboardResponse } from "@/types";
 import { VideoMetadata } from "@/components/VideoMetadata";
 import { DashboardSummary } from "@/components/DashboardSummary";
@@ -9,6 +10,17 @@ import { AllROIsSection } from "@/components/AllROIsSection";
 import { FrameByFrameView } from "@/components/FrameByFrameView";
 import { VideoList } from "@/components/VideoList";
 import { VideoUpload } from "@/components/VideoUpload";
+import { SearchBar } from "@/components/SearchBar";
+
+// Plotly uses browser-only APIs — must be excluded from SSR
+const EmbeddingScatterPlot = dynamic(
+  () => import("@/components/EmbeddingScatterPlot"),
+  { ssr: false }
+);
+const GlobalView = dynamic(
+  () => import("@/components/GlobalView"),
+  { ssr: false }
+);
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
@@ -21,6 +33,7 @@ export default function Home() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searchHighlightIds, setSearchHighlightIds] = useState<Set<string>>(new Set());
 
   const loadDashboard = async (id: string) => {
     const trimmed = id.trim();
@@ -33,6 +46,7 @@ export default function Home() {
     setError(null);
     setVideo(null);
     setDashboard(null);
+    setSearchHighlightIds(new Set());
 
     try {
       console.log(`[Dashboard] Fetching video and dashboard for ID: ${trimmed}`);
@@ -108,7 +122,7 @@ export default function Home() {
           </div>
 
           {tab === "select" ? (
-            <VideoList onSelectVideo={loadDashboard} />
+            <VideoList onSelectVideo={loadDashboard} apiBase={API_BASE} />
           ) : (
             <VideoUpload
               onUploadSuccess={(newVideoId) => {
@@ -137,6 +151,16 @@ export default function Home() {
 
         {dashboard ? (
           <section className="grid gap-6 overflow-hidden">
+            <SearchBar
+              videoId={video!.id}
+              apiBase={API_BASE}
+              onResultsChange={setSearchHighlightIds}
+            />
+            <EmbeddingScatterPlot
+              rois={dashboard.rois}
+              highlightIds={searchHighlightIds}
+            />
+
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
               <h2 className="text-lg font-semibold">Clusters</h2>
               <div className="mt-4 grid gap-4">
@@ -155,6 +179,11 @@ export default function Home() {
             <AllROIsSection rois={dashboard.rois} />
           </section>
         ) : null}
+
+        {/* Global view — always visible, independent of selected video */}
+        <section className="grid gap-6 overflow-hidden">
+          <GlobalView apiBase={API_BASE} />
+        </section>
       </main>
     </div>
   );

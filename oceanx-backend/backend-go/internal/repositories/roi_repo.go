@@ -6,14 +6,11 @@ import (
 	"oceanx/backend-go/internal/models"
 )
 
-// UpdateROIClusters updates the cluster_id for a batch of ROIs
-func (r *VideoRepository) UpdateROIClusters(ctx context.Context, roiClusters []struct {
-	RoiID     string
-	ClusterID int
-}) error {
-	query := `UPDATE rois SET cluster = $1 WHERE id = $2`
+// UpdateROIClusters updates the cluster_id and UMAP 3D coords for a batch of ROIs
+func (r *VideoRepository) UpdateROIClusters(ctx context.Context, roiClusters []models.ROIClusterMapping) error {
+	query := `UPDATE rois SET cluster = $1, umap_x = $2, umap_y = $3, umap_z = $4 WHERE id = $5`
 	for _, rc := range roiClusters {
-		_, err := r.DB.ExecContext(ctx, query, rc.ClusterID, rc.RoiID)
+		_, err := r.DB.ExecContext(ctx, query, rc.ClusterID, rc.UmapX, rc.UmapY, rc.UmapZ, rc.RoiID)
 		if err != nil {
 			return err
 		}
@@ -23,7 +20,7 @@ func (r *VideoRepository) UpdateROIClusters(ctx context.Context, roiClusters []s
 
 // GetROIsByVideo retrieves all ROIs for a given video
 func (r *VideoRepository) GetROIsByVideo(ctx context.Context, videoID string) ([]models.Roi, error) {
-	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster 
+	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster, umap_x, umap_y, umap_z
 	          FROM rois WHERE video_id = $1 ORDER BY id`
 
 	rows, err := r.DB.QueryContext(ctx, query, videoID)
@@ -40,6 +37,7 @@ func (r *VideoRepository) GetROIsByVideo(ctx context.Context, videoID string) ([
 		err := rows.Scan(
 			&roi.ID, &roi.FrameID, &roi.FrameIdx, &roi.VideoID,
 			&roi.X1, &roi.Y1, &roi.X2, &roi.Y2, &roiUrl, &roi.Cluster,
+			&roi.UmapX, &roi.UmapY, &roi.UmapZ,
 		)
 		if err != nil {
 			return nil, err
@@ -56,7 +54,7 @@ func (r *VideoRepository) GetROIsByVideo(ctx context.Context, videoID string) ([
 
 // GetROIsByVideoAndCluster retrieves ROIs for a video filtered by cluster
 func (r *VideoRepository) GetROIsByVideoAndCluster(ctx context.Context, videoID string, clusterID int) ([]models.Roi, error) {
-	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster 
+	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster, umap_x, umap_y, umap_z
 	          FROM rois WHERE video_id = $1 AND cluster = $2 ORDER BY id`
 
 	rows, err := r.DB.QueryContext(ctx, query, videoID, clusterID)
@@ -73,6 +71,7 @@ func (r *VideoRepository) GetROIsByVideoAndCluster(ctx context.Context, videoID 
 		err := rows.Scan(
 			&roi.ID, &roi.FrameID, &roi.FrameIdx, &roi.VideoID,
 			&roi.X1, &roi.Y1, &roi.X2, &roi.Y2, &roiUrl, &roi.Cluster,
+			&roi.UmapX, &roi.UmapY, &roi.UmapZ,
 		)
 		if err != nil {
 			return nil, err
@@ -89,7 +88,7 @@ func (r *VideoRepository) GetROIsByVideoAndCluster(ctx context.Context, videoID 
 
 // GetROIByID retrieves a single ROI by ID
 func (r *VideoRepository) GetROIByID(ctx context.Context, roiID string) (*models.Roi, error) {
-	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster 
+	query := `SELECT id, frame_id, frame_idx, video_id, x1, y1, x2, y2, roi_url, cluster, umap_x, umap_y, umap_z
 	          FROM rois WHERE id = $1`
 
 	var roi models.Roi
@@ -98,6 +97,7 @@ func (r *VideoRepository) GetROIByID(ctx context.Context, roiID string) (*models
 	err := r.DB.QueryRowContext(ctx, query, roiID).Scan(
 		&roi.ID, &roi.FrameID, &roi.FrameIdx, &roi.VideoID,
 		&roi.X1, &roi.Y1, &roi.X2, &roi.Y2, &roiUrl, &roi.Cluster,
+		&roi.UmapX, &roi.UmapY, &roi.UmapZ,
 	)
 
 	if err == sql.ErrNoRows {
@@ -121,8 +121,8 @@ type ClusterInfo struct {
 }
 
 func (r *VideoRepository) GetClustersByVideo(ctx context.Context, videoID string) ([]ClusterInfo, error) {
-	query := `SELECT cluster, COUNT(*) as roi_count 
-	          FROM rois WHERE video_id = $1 AND cluster >= 0 
+	query := `SELECT cluster, COUNT(*) as roi_count
+	          FROM rois WHERE video_id = $1 AND cluster >= 0
 	          GROUP BY cluster ORDER BY cluster`
 
 	rows, err := r.DB.QueryContext(ctx, query, videoID)

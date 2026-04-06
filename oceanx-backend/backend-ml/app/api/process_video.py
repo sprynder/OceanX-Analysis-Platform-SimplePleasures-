@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File
 from app.video.extract_frames import extract_frames
 from app.vision.roi import detect_rois
 from app.vision.embedding import embed, EMBEDDING_DIM
+from app.vision.dedup import deduplicate
 from app.storage.qdrant import client, init_collection
 from app.schemas.schemas import ProcessVideoRequest
 from uuid import uuid4
@@ -82,6 +83,20 @@ async def process_video(request: ProcessVideoRequest, every_seconds: float = 0.5
         })
 
     if points:
+        # TODO: ingestion-time dedup — uncomment to keep only unique ROIs in Qdrant.
+        # Use the dedup slider in the UI for now to explore at search-time instead.
+        # dedup_candidates = [
+        #     {"id": p["id"], "vector": p["vector"],
+        #      "timestamp_sec": p["payload"]["timestamp_sec"], "bbox": p["payload"]["bbox"]}
+        #     for p in points
+        # ]
+        # kept = deduplicate(dedup_candidates, tau_time=1.0, tau_iou=0.3, tau_emb=0.85)
+        # kept_ids = {c["id"] for c in kept}
+        # points = [p for p in points if p["id"] in kept_ids]
+        # for frame in frames_data:
+        #     frame["rois"] = [r for r in frame["rois"] if r["id"] in kept_ids]
+        # print(f"[Dedup] {len(dedup_candidates)} ROIs → {len(points)} after ingestion dedup")
+
         client.upsert(collection_name="roi_embeddings", points=points)
 
     # Send frame and ROI metadata back to Go API
