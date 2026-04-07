@@ -20,6 +20,29 @@ function clusterColorSolid(clusterId: number): string {
   return `hsl(${(clusterId * 47) % 360}, 65%, 55%)`;
 }
 
+const DEDUP_DEFAULTS = { tauTime: 2.0, tauIou: 0.3, tauEmb: 0.85 };
+
+const DEDUP_EXPLANATIONS = [
+  {
+    label: "Δt window (s) — τ_time",
+    description:
+      "Suppresses an ROI if it occurred within this many seconds of an earlier, more similar ROI in the same video. " +
+      "Low (~1 s): only removes near-duplicate frames. High (~5 s): collapses entire sightings of the same animal into one.",
+  },
+  {
+    label: "IoU threshold — τ_iou",
+    description:
+      "Intersection-over-Union between bounding boxes. Only suppresses if boxes substantially overlap. " +
+      "Low (~0.1): any nearby crop is suppressed. High (~0.6): only near-identical crops are removed.",
+  },
+  {
+    label: "Embedding similarity — τ_emb",
+    description:
+      "BioCLIP cosine similarity. Only suppresses if the two ROIs look visually identical. " +
+      "Low (~0.7): similar-looking animals deduplicated. High (~0.95): only exact-same-frame duplicates removed.",
+  },
+];
+
 export default function GlobalView({ apiBase }: Props) {
   const [data, setData] = useState<GlobalUMAPResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,11 +50,28 @@ export default function GlobalView({ apiBase }: Props) {
   const [hoveredRoi, setHoveredRoi] = useState<GlobalRoi | null>(null);
   const [searchHighlightIds, setSearchHighlightIds] = useState<Set<string>>(new Set());
 
+  // Dedup controls
+  const [dedupEnabled, setDedupEnabled] = useState(false);
+  const [showDedup, setShowDedup] = useState(false);
+  const [showDedupHelp, setShowDedupHelp] = useState(false);
+  const [tauTime, setTauTime] = useState(DEDUP_DEFAULTS.tauTime);
+  const [tauIou, setTauIou] = useState(DEDUP_DEFAULTS.tauIou);
+  const [tauEmb, setTauEmb] = useState(DEDUP_DEFAULTS.tauEmb);
+
   const loadGlobal = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiBase}/global/umap`, { method: "POST" });
+      const res = await fetch(`${apiBase}/global/umap`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dedup_enabled: dedupEnabled,
+          tau_time: tauTime,
+          tau_iou: tauIou,
+          tau_emb: tauEmb,
+        }),
+      });
       if (!res.ok) throw new Error(`Global UMAP failed (${res.status})`);
       setData(await res.json());
     } catch (err) {
@@ -61,6 +101,21 @@ export default function GlobalView({ apiBase }: Props) {
       }),
     [byCluster]
   );
+
+  // Fixed axis ranges — computed once from data so legend-click never re-scales
+  const axisRanges = useMemo(() => {
+    if (!data || data.rois.length === 0) return null;
+    const pad = (vals: number[]) => {
+      const mn = Math.min(...vals), mx = Math.max(...vals);
+      const m = (mx - mn) * 0.08;
+      return [mn - m, mx + m] as [number, number];
+    };
+    return {
+      x: pad(data.rois.map((r) => r.umap_x)),
+      y: pad(data.rois.map((r) => r.umap_y)),
+      z: pad(data.rois.map((r) => r.umap_z)),
+    };
+  }, [data]);
 
   const roiMap = useMemo(() => {
     if (!data) return new Map<string, GlobalRoi>();
@@ -145,14 +200,80 @@ export default function GlobalView({ apiBase }: Props) {
             All vectors across every video in Qdrant — coloured by HDBSCAN cluster across the full corpus.
           </p>
         </div>
-        <button
-          onClick={loadGlobal}
-          disabled={loading}
-          className="shrink-0 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {loading ? "Computing…" : data ? "Recompute" : "Load global view"}
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => setShowDedup((v) => !v)}
+            className={`rounded-lg border px-3 py-2 text-xs font-medium transition ${
+              showDedup ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            ⚙ Dedup
+          </button>
+          <button
+            onClick={loadGlobal}
+            disabled={loading}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+          >
+            {loading ? "Computing…" : data ? "Recompute" : "Load global view"}
+          </button>
+        </div>
       </div>
+
+      {showDedup && (
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+              Deduplication (applied before UMAP)
+            </span>
+            <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+              <input type="checkbox" checked={dedupEnabled}
+                onChange={(e) => setDedupEnabled(e.target.checked)} className="rounded" />
+              Enabled
+            </label>
+          </div>
+          {dedupEnabled && (
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: "Δt window (s)", value: tauTime, set: setTauTime, min: 0, max: 10, step: 0.5 },
+                { label: "IoU threshold", value: tauIou,  set: setTauIou,  min: 0, max: 1,  step: 0.05 },
+                { label: "Emb similarity", value: tauEmb, set: setTauEmb,  min: 0, max: 1,  step: 0.05 },
+              ].map(({ label, value, set, min, max, step }) => (
+                <div key={label} className="flex flex-col gap-1">
+                  <div className="flex justify-between">
+                    <span className="text-[11px] text-slate-500">{label}</span>
+                    <span className="text-[11px] font-semibold text-slate-700">{value.toFixed(2)}</span>
+                  </div>
+                  <input type="range" min={min} max={max} step={step} value={value}
+                    onChange={(e) => set(parseFloat(e.target.value))}
+                    className="w-full accent-slate-800" />
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-[11px] text-slate-400">
+            Dedup runs per-video before UMAP — removes near-duplicate frames of the same animal.
+            Hit Recompute to apply.
+          </p>
+
+          {/* Collapsible explanation */}
+          <button
+            onClick={() => setShowDedupHelp((v) => !v)}
+            className="flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-700 transition"
+          >
+            {showDedupHelp ? "▲" : "▼"} What do these parameters do?
+          </button>
+          {showDedupHelp && (
+            <div className="space-y-2 border-t border-slate-200 pt-2">
+              {DEDUP_EXPLANATIONS.map(({ label, description }) => (
+                <div key={label}>
+                  <p className="text-[11px] font-semibold text-slate-600">{label}</p>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">{description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
@@ -183,13 +304,15 @@ export default function GlobalView({ apiBase }: Props) {
                 layout={{
                   autosize: true,
                   height: 520,
+                  uirevision: "static",
                   hovermode: "closest",
                   margin: { l: 0, r: 0, t: 10, b: 0 },
                   paper_bgcolor: "rgba(0,0,0,0)",
                   scene: {
-                    xaxis: { title: { text: "UMAP-1" }, showgrid: true, gridcolor: "#e2e8f0" },
-                    yaxis: { title: { text: "UMAP-2" }, showgrid: true, gridcolor: "#e2e8f0" },
-                    zaxis: { title: { text: "UMAP-3" }, showgrid: true, gridcolor: "#e2e8f0" },
+                    aspectmode: "cube",
+                    xaxis: { title: { text: "UMAP-1" }, showgrid: true, gridcolor: "#e2e8f0", range: axisRanges?.x },
+                    yaxis: { title: { text: "UMAP-2" }, showgrid: true, gridcolor: "#e2e8f0", range: axisRanges?.y },
+                    zaxis: { title: { text: "UMAP-3" }, showgrid: true, gridcolor: "#e2e8f0", range: axisRanges?.z },
                     bgcolor: "#f8fafc",
                   },
                   legend: { x: 0.01, y: 0.99, bgcolor: "rgba(255,255,255,0.85)",

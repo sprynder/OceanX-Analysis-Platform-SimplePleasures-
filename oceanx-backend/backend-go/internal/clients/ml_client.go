@@ -187,8 +187,51 @@ func (c *MLClient) SearchROIs(ctx context.Context, req MLSearchRequest) (*MLSear
 	return &result, nil
 }
 
-func (c *MLClient) GlobalUMAP(ctx context.Context) (*MLGlobalUMAPResponse, error) {
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/global-umap", bytes.NewBuffer([]byte("{}")))
+type MLImageSearchRequest struct {
+	VideoID      *string `json:"video_id"`
+	ImageB64     string  `json:"image_b64"`
+	TopK         int     `json:"top_k"`
+	DedupEnabled bool    `json:"dedup_enabled"`
+	TauTime      float64 `json:"tau_time"`
+	TauIoU       float64 `json:"tau_iou"`
+	TauEmb       float64 `json:"tau_emb"`
+}
+
+func (c *MLClient) SearchROIsByImage(ctx context.Context, req MLImageSearchRequest) (*MLSearchResponse, error) {
+	body, _ := json.Marshal(req)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/search-rois-by-image", bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.Client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("ML image search returned %d", resp.StatusCode)
+	}
+
+	var result MLSearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+type MLGlobalUMAPRequest struct {
+	DedupEnabled bool    `json:"dedup_enabled"`
+	TauTime      float64 `json:"tau_time"`
+	TauIoU       float64 `json:"tau_iou"`
+	TauEmb       float64 `json:"tau_emb"`
+}
+
+func (c *MLClient) GlobalUMAP(ctx context.Context, req MLGlobalUMAPRequest) (*MLGlobalUMAPResponse, error) {
+	body, _ := json.Marshal(req)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+"/global-umap", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}

@@ -34,6 +34,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchHighlightIds, setSearchHighlightIds] = useState<Set<string>>(new Set());
+  const [clustersOpen, setClustersOpen] = useState(true);
 
   const loadDashboard = async (id: string) => {
     const trimmed = id.trim();
@@ -151,27 +152,35 @@ export default function Home() {
 
         {dashboard ? (
           <section className="grid gap-6 overflow-hidden">
+            <EmbeddingScatterPlot
+              rois={dashboard.rois}
+              highlightIds={searchHighlightIds}
+            />
             <SearchBar
               videoId={video!.id}
               apiBase={API_BASE}
               onResultsChange={setSearchHighlightIds}
             />
-            <EmbeddingScatterPlot
-              rois={dashboard.rois}
-              highlightIds={searchHighlightIds}
-            />
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden">
-              <h2 className="text-lg font-semibold">Clusters</h2>
-              <div className="mt-4 grid gap-4">
-                {dashboard.clusters.length === 0 ? (
-                  <p className="text-sm text-slate-500">No clusters found.</p>
-                ) : (
-                  dashboard.clusters.map((cluster) => (
-                    <ClusterCard key={cluster.cluster_id} cluster={cluster} />
-                  ))
-                )}
-              </div>
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <button
+                onClick={() => setClustersOpen((v) => !v)}
+                className="flex w-full items-center justify-between p-6 text-left"
+              >
+                <h2 className="text-lg font-semibold">Clusters</h2>
+                <span className="text-slate-400 text-sm">{clustersOpen ? "▲" : "▼"}</span>
+              </button>
+              {clustersOpen && (
+                <div className="px-6 pb-6 grid gap-4">
+                  {dashboard.clusters.length === 0 ? (
+                    <p className="text-sm text-slate-500">No clusters found.</p>
+                  ) : (
+                    dashboard.clusters.map((cluster) => (
+                      <ClusterCard key={cluster.cluster_id} cluster={cluster} />
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             <FrameByFrameView dashboard={dashboard} />

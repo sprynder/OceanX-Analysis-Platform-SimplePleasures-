@@ -22,6 +22,7 @@ export function FrameByFrameView({ dashboard }: FrameByFrameViewProps) {
   }, [dashboard.rois]);
 
   const [currentFrame, setCurrentFrame] = useState(frameRange.min);
+  const [isOpen, setIsOpen] = useState(true);
 
   // Get all unique cluster IDs from the entire dataset
   const allClusterIds = useMemo(() => {
@@ -54,14 +55,24 @@ export function FrameByFrameView({ dashboard }: FrameByFrameViewProps) {
   const totalRoisInFrame = Object.values(frameData).reduce((sum, rois) => sum + rois.length, 0);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden h-[700px]">
-      <div className="flex h-full flex-col gap-4">
+    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <button
+        onClick={() => setIsOpen((v) => !v)}
+        className="flex w-full items-center justify-between p-6 text-left"
+      >
         <div>
-          <h2 className="text-lg font-semibold mb-2">Frame-by-Frame View</h2>
-          <p className="text-sm text-slate-600 mb-4">
-            Frame {currentFrame} of {frameRange.max} • {totalRoisInFrame} ROIs
-          </p>
+          <h2 className="text-lg font-semibold">Frame-by-Frame View</h2>
+          {isOpen && (
+            <p className="mt-0.5 text-sm text-slate-600">
+              Frame {currentFrame} of {frameRange.max} • {totalRoisInFrame} ROIs
+            </p>
+          )}
+        </div>
+        <span className="text-slate-400 text-sm">{isOpen ? "▲" : "▼"}</span>
+      </button>
 
+      {isOpen && (
+        <div className="flex flex-col gap-4 px-6 pb-6 h-[620px]">
           {/* Slider */}
           <div className="space-y-2">
             <input
@@ -77,39 +88,39 @@ export function FrameByFrameView({ dashboard }: FrameByFrameViewProps) {
               <span>Frame {frameRange.max}</span>
             </div>
           </div>
-        </div>
 
-        {/* Display ROIs grouped by cluster */}
-        <div className="-mx-6 px-6 overflow-x-auto pb-2">
-          <div className="flex gap-4">
-            {allClusterIds.map((clusterId) => {
-              const rois = frameData[clusterId];
-              return (
-                <div key={clusterId} className="flex-shrink-0 w-64 border border-slate-200 rounded-lg p-4">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-3">
-                    Cluster {clusterId} ({rois.length} ROI{rois.length !== 1 ? 's' : ''})
-                  </h3>
-                  <div className="h-[400px] overflow-y-auto pr-1">
-                    {rois.length === 0 ? (
-                      <div className="flex items-center justify-center h-full text-slate-400 text-sm">
-                        No ROIs in this frame
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-3">
-                        {rois.map((roi) => (
-                          <div key={roi.id}>
-                            <ROICard roi={roi} />
-                          </div>
-                        ))}
-                      </div>
-                    )}
+          {/* Display ROIs grouped by cluster */}
+          <div className="-mx-6 px-6 overflow-x-auto pb-2">
+            <div className="flex gap-4">
+              {allClusterIds.map((clusterId) => {
+                const rois = frameData[clusterId];
+                return (
+                  <div key={clusterId} className="flex-shrink-0 w-64 border border-slate-200 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3">
+                      Cluster {clusterId} ({rois.length} ROI{rois.length !== 1 ? 's' : ''})
+                    </h3>
+                    <div className="h-[400px] overflow-y-auto pr-1">
+                      {rois.length === 0 ? (
+                        <div className="flex items-center justify-center h-full text-slate-400 text-sm">
+                          No ROIs in this frame
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-3">
+                          {rois.map((roi) => (
+                            <div key={roi.id}>
+                              <ROICard roi={roi} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

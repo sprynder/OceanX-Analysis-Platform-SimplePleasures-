@@ -36,6 +36,16 @@ class SearchROIsRequest(BaseModel):
     tau_emb: float = 0.85    # cosine similarity — suppress visually identical results
 
 
+class ImageSearchROIsRequest(BaseModel):
+    video_id: Optional[str] = None  # None = search across all videos
+    image_b64: str            # base64-encoded image (any format PIL can read)
+    top_k: int = 10
+    dedup_enabled: bool = True
+    tau_time: float = 2.0
+    tau_iou: float = 0.3
+    tau_emb: float = 0.85
+
+
 class SearchROIResult(BaseModel):
     roi_id: str
     score: float             # cosine similarity to the text query (0–1)
@@ -50,6 +60,13 @@ class SearchROIsResponse(BaseModel):
     video_id: Optional[str]
     results: List[SearchROIResult]
     raw_count: int           # candidates before dedup, for comparing dedup impact
+
+
+class GlobalUMAPRequest(BaseModel):
+    dedup_enabled: bool = False
+    tau_time: float = 2.0    # seconds — suppress ROIs within this temporal window
+    tau_iou: float = 0.3     # IoU threshold
+    tau_emb: float = 0.85    # cosine similarity threshold
 
 
 class GlobalROI(BaseModel):

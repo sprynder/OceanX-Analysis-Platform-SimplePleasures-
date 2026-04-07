@@ -37,9 +37,11 @@ func SetupRouter(videoHandler *handlers.VideoHandler) *gin.Engine {
 
 	// Per-video search
 	r.POST("/videos/:id/search", videoHandler.SearchROIs)
+	r.POST("/videos/:id/search-by-image", videoHandler.ImageSearchROIs)
 
 	// Global (cross-video) endpoints
 	r.POST("/global/search", videoHandler.GlobalSearch)
+	r.POST("/global/search-by-image", videoHandler.GlobalImageSearch)
 	r.POST("/global/umap", videoHandler.GlobalUMAP)
 
 	return r

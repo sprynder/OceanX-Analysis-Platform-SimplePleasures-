@@ -327,8 +327,92 @@ func (h *VideoHandler) runSearch(c *gin.Context, videoID *string) {
 	c.JSON(http.StatusOK, results)
 }
 
+func (h *VideoHandler) ImageSearchROIs(c *gin.Context) {
+	videoID := c.Param("id")
+	h.runImageSearch(c, &videoID)
+}
+
+func (h *VideoHandler) GlobalImageSearch(c *gin.Context) {
+	h.runImageSearch(c, nil)
+}
+
+func (h *VideoHandler) runImageSearch(c *gin.Context, videoID *string) {
+	var body struct {
+		ImageB64     string  `json:"image_b64"`
+		TopK         int     `json:"top_k"`
+		DedupEnabled *bool   `json:"dedup_enabled"`
+		TauTime      float64 `json:"tau_time"`
+		TauIoU       float64 `json:"tau_iou"`
+		TauEmb       float64 `json:"tau_emb"`
+	}
+
+	if err := c.BindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if body.ImageB64 == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image_b64 is required"})
+		return
+	}
+	if body.TopK == 0 {
+		body.TopK = 10
+	}
+	if body.TauTime == 0 {
+		body.TauTime = 2.0
+	}
+	if body.TauIoU == 0 {
+		body.TauIoU = 0.3
+	}
+	if body.TauEmb == 0 {
+		body.TauEmb = 0.85
+	}
+	dedupEnabled := true
+	if body.DedupEnabled != nil {
+		dedupEnabled = *body.DedupEnabled
+	}
+
+	results, err := h.Service.MLClient.SearchROIsByImage(c.Request.Context(), clients.MLImageSearchRequest{
+		VideoID:      videoID,
+		ImageB64:     body.ImageB64,
+		TopK:         body.TopK,
+		DedupEnabled: dedupEnabled,
+		TauTime:      body.TauTime,
+		TauIoU:       body.TauIoU,
+		TauEmb:       body.TauEmb,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, results)
+}
+
 func (h *VideoHandler) GlobalUMAP(c *gin.Context) {
-	result, err := h.Service.MLClient.GlobalUMAP(c.Request.Context())
+	var body struct {
+		DedupEnabled bool    `json:"dedup_enabled"`
+		TauTime      float64 `json:"tau_time"`
+		TauIoU       float64 `json:"tau_iou"`
+		TauEmb       float64 `json:"tau_emb"`
+	}
+	// Body is optional — ignore parse errors and use zero values (dedup off)
+	_ = c.ShouldBindJSON(&body)
+	if body.TauTime == 0 {
+		body.TauTime = 2.0
+	}
+	if body.TauIoU == 0 {
+		body.TauIoU = 0.3
+	}
+	if body.TauEmb == 0 {
+		body.TauEmb = 0.85
+	}
+
+	result, err := h.Service.MLClient.GlobalUMAP(c.Request.Context(), clients.MLGlobalUMAPRequest{
+		DedupEnabled: body.DedupEnabled,
+		TauTime:      body.TauTime,
+		TauIoU:       body.TauIoU,
+		TauEmb:       body.TauEmb,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -113,6 +113,21 @@ export default function EmbeddingScatterPlot({ rois, highlightIds }: Props) {
     [clusterTraces, searchHighlightTrace]
   );
 
+  // Fixed axis ranges — prevents re-scaling when toggling cluster visibility
+  const axisRanges = useMemo(() => {
+    if (plotRois.length === 0) return null;
+    const pad = (vals: number[]) => {
+      const mn = Math.min(...vals), mx = Math.max(...vals);
+      const m = (mx - mn) * 0.08;
+      return [mn - m, mx + m] as [number, number];
+    };
+    return {
+      x: pad(plotRois.map((r) => r.umap_x as number)),
+      y: pad(plotRois.map((r) => r.umap_y as number)),
+      z: pad(plotRois.map((r) => r.umap_z as number)),
+    };
+  }, [plotRois]);
+
   // ─── Hover via direct DOM attachment ─────────────────────────────────────────
   // react-plotly.js attaches event listeners before Plotly.newPlot() resolves,
   // so the plotly_hover event silently drops until the next Plotly.react() call
@@ -179,13 +194,15 @@ export default function EmbeddingScatterPlot({ rois, highlightIds }: Props) {
             layout={{
               autosize: true,
               height: 520,
+              uirevision: "static",
               hovermode: "closest",
               margin: { l: 0, r: 0, t: 10, b: 0 },
               paper_bgcolor: "rgba(0,0,0,0)",
               scene: {
-                xaxis: { title: { text: "UMAP-1" }, showgrid: true, gridcolor: "#e2e8f0" },
-                yaxis: { title: { text: "UMAP-2" }, showgrid: true, gridcolor: "#e2e8f0" },
-                zaxis: { title: { text: "UMAP-3" }, showgrid: true, gridcolor: "#e2e8f0" },
+                aspectmode: "cube",
+                xaxis: { title: { text: "UMAP-1" }, showgrid: true, gridcolor: "#e2e8f0", range: axisRanges?.x },
+                yaxis: { title: { text: "UMAP-2" }, showgrid: true, gridcolor: "#e2e8f0", range: axisRanges?.y },
+                zaxis: { title: { text: "UMAP-3" }, showgrid: true, gridcolor: "#e2e8f0", range: axisRanges?.z },
                 bgcolor: "#f8fafc",
               },
               legend: {
