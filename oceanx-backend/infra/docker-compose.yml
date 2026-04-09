@@ -46,7 +46,8 @@ services:
 
   backend-ml:
     build:
-      context: ../backend-ml
+      context: ../../
+      dockerfile: oceanx-backend/backend-ml/Dockerfile
     ports:
       - "8000:8000"
     volumes:
@@ -59,6 +60,10 @@ services:
       - QDRANT_PORT=6333
       - GATEWAY_API=http://backend-go:8080
       - ROI_DIR=/data/rois
+      - DATA_POC_ROOT=/opt/oceanx-data-poc
+      - DATASETS_ROOT=/opt/oceanx-data-poc/data
+      - OPENRVDAS_ROOT=/opt/oceanx-data-poc/OpenRVDAS
+      - PIPELINE_TOOLS_PATH=/opt/oceanx-data-poc/analysis_tools/pipeline_tools.py
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
